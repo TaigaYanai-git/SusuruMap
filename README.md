@@ -12,7 +12,7 @@ YouTuber **SUSURU TV.** が訪れたラーメン店を地図で探せる iOS ア
 
 ## はじめかた（各自の Mac で）
 
-必要なもの：Xcode 16 以上、Homebrew。開発者は Developer Program のチーム（無料アカウントでも iCloud を外せばビルド可）。**使うだけの友達は TestFlight で入れるだけ**でOK
+必要なもの：Xcode 26 以上、Homebrew。開発者は Developer Program のチーム（無料アカウントでも iCloud を外せばビルド可）。**使うだけの友達は TestFlight で入れるだけ**でOK
 
 ```bash
 git clone https://github.com/<owner>/SusuruMap.git
