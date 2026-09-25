@@ -236,15 +236,14 @@ def build(videos: list[dict], overrides: dict, geo_cache: dict, retry_failed: bo
             note("店の回ではなさそう（カップ麺など）")
             continue
 
-        located_by = "override"
+        geo = None
+        located_by = ""
         if "lat" in ov and "lng" in ov:
-            geo = {"lat": ov["lat"], "lng": ov["lng"]}
-        elif address and (geo := geocode(address, geo_cache, retry_failed)):
-            located_by = "address"
-        elif name and (geo := search_by_name(name, geo_cache, retry_failed)):
-            located_by = "name"
-        else:
-            geo = None
+            geo, located_by = {"lat": ov["lat"], "lng": ov["lng"]}, "override"
+        if geo is None and address:
+            geo, located_by = geocode(address, geo_cache, retry_failed), "address"
+        if geo is None and name:
+            geo, located_by = search_by_name(name, geo_cache, retry_failed), "name"
 
         if not name or not geo:
             note("場所が見つからない" if name else "店名が分からない")
