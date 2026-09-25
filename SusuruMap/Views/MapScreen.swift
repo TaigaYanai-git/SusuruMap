@@ -49,11 +49,16 @@ struct MapScreen: View {
                 ForEach(layout.singles) { shop in
                     let visited = visitedIDs.contains(shop.id)
                     let isDestination = planner.destination?.id == shop.id
-                    Marker(shop.name,
-                           systemImage: isDestination ? "flag.fill" : (visited ? "checkmark" : "fork.knife"),
-                           coordinate: shop.coordinate)
-                        .tint(isDestination ? Color.blue : (visited ? Color.green : Color.orange))
-                        .tag(shop.id)
+                    if isDestination {
+                        Marker(shop.name, systemImage: "flag.fill", coordinate: shop.coordinate)
+                            .tint(Color.blue)
+                            .tag(shop.id)
+                    } else {
+                        // ラーメンどんぶりの記号（Assets の RamenPin）。行った店は緑、まだの店はオレンジ
+                        Marker(shop.name, image: "RamenPin", coordinate: shop.coordinate)
+                            .tint(visited ? Color.green : Color.orange)
+                            .tag(shop.id)
+                    }
                 }
 
                 ForEach(layout.clusters) { cluster in
