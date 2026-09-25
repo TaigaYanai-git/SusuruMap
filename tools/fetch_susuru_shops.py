@@ -4,7 +4,8 @@ SUSURU TV. の全動画から「ラーメン店データ（shops.json）」を�
 
   1. YouTube Data API v3 で公式チャンネルのアップロード動画を全件取得
   2. 概要欄・タイトルから店名と住所を推定
-  3. 国土地理院のジオコーダ（APIキー不要）で住所 → 緯度経度
+  3. 住所があれば国土地理院のジオコーダ、なければ店名で OpenStreetMap を検索して緯度経度に
+     （どちらも APIキー不要・無料。相手サーバーに配慮して1件ずつ間隔をあける）
   4. 同じ店の動画をまとめて SusuruMap/Resources/shops.json に書き出す
 
 推定できなかった動画は data/unresolved.csv に出る。
@@ -45,6 +46,7 @@ YT_API = "https://www.googleapis.com/youtube/v3/"
 # SUSURU TV. 公式チャンネル（@SUSURUTV）のアップロード動画プレイリスト
 DEFAULT_UPLOADS_PLAYLIST = "UUXcjvt8cOfwtcqaMeE7-hqA"
 GSI_GEOCODER = "https://msearch.gsi.go.jp/address-search/AddressSearch?q="
+NOMINATIM = "https://nominatim.openstreetmap.org/search?"
 
 PREFECTURES = [
     "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県",
@@ -58,8 +60,13 @@ PREF_ALT = "|".join(PREFECTURES)
 ADDRESS_IN_TEXT = re.compile(rf"((?:{PREF_ALT})[^\s、，,。【】()（）「」]{{3,50}})")
 LABELED = re.compile(r"^\s*[■◆●▼☆★・\-]*\s*(店名|店舗名|お店|住所|所在地|場所)\s*[:：]\s*(.+)$")
 ZIP_LINE = re.compile(r"〒?\s*\d{3}-\d{4}\s*(.+)")
-TITLE_NOISE = re.compile(r"【[^】]*】|\[[^\]]*\]|#\S+|\|.*$|｜.*$")
-TITLE_SUFFIX = re.compile(r"(を|で)?(すする|啜る|すすった).*$")
+# SUSURU TV. のタイトル形式: 「（見出し）。をすする 店名【飯テロ】SUSURU TV.第3900回」
+# → 最後の「すする」から【飯テロ】（なければ SUSURU TV.）までが店名
+TITLE_SHOP = re.compile(r".*すする\s*(.+?)\s*【飯テロ】")
+TITLE_SHOP_ALT = re.compile(r".*すする\s*(.+?)\s*SUSURU\s*TV", re.IGNORECASE)
+# 店ではない回（カップ麺・袋麺・通販など）を見分ける語
+NOT_SHOP_WORDS = ("カップ", "袋麺", "日清", "マルちゃん", "明星", "サッポロ一番", "エースコック",
+                  "セブン", "ローソン", "ファミマ", "ファミリーマート", "宅麺", "冷凍", "コンビニ", "自作")
 
 
 def norm(s: str) -> str:
@@ -73,7 +80,7 @@ def load_json(path: Path, default):
 
 
 def http_json(url: str):
-    req = urllib.request.Request(url, headers={"User-Agent": "SusuruMap-data-builder"})
+    req = urllib.request.Request(url, headers={"User-Agent": "SusuruMap-data-builder/0.2 (fan-made app; github.com)", "Accept-Language": "ja"})
     with urllib.request.urlopen(req, timeout=30) as res:
         return json.load(res)
 
@@ -130,19 +137,32 @@ def extract(video: dict) -> dict:
 
     name_source = "description"
     if not name:
-        t = TITLE_NOISE.sub("", norm(video["title"]))
-        t = TITLE_SUFFIX.sub("", t).strip(" 　-!！")
-        name, name_source = (t or None), "title"
+        name, name_source = shop_from_title(video["title"]), "title"
 
     if address:
         address = re.split(r"\s{2,}|　|TEL|電話|営業|定休", address)[0].strip()
     return {"name": name, "address": address, "nameSource": name_source}
 
 
-def prefecture_of(address: str | None) -> str | None:
-    if not address:
+def shop_from_title(title: str) -> str | None:
+    t = norm(title)
+    for rx in (TITLE_SHOP, TITLE_SHOP_ALT):
+        m = rx.match(t)
+        if m:
+            name = re.sub(r"【[^】]*】|#\S+", "", m.group(1)).strip(" -!！。、")
+            if name:
+                return name
+    return None
+
+
+def looks_like_non_shop(name: str | None) -> bool:
+    return bool(name) and any(w in name for w in NOT_SHOP_WORDS)
+
+
+def prefecture_of(text: str | None) -> str | None:
+    if not text:
         return None
-    return next((p for p in PREFECTURES if address.startswith(p)), None)
+    return next((p for p in PREFECTURES if p in text), None)
 
 
 # ---------------------------------------------------------------- ジオコーディング
@@ -164,14 +184,38 @@ def geocode(address: str, cache: dict, retry_failed: bool) -> dict | None:
     return cache[address]
 
 
+def search_by_name(name: str, cache: dict, retry_failed: bool) -> dict | None:
+    """住所がないとき、店名で OpenStreetMap を検索（飲食店・お店だけを採用）"""
+    key = "name:" + name
+    if key in cache and (cache[key] is not None or not retry_failed):
+        return cache[key]
+    params = {"q": name, "format": "jsonv2", "countrycodes": "jp", "limit": 5, "accept-language": "ja"}
+    try:
+        res = http_json(NOMINATIM + urllib.parse.urlencode(params))
+    except Exception as e:  # noqa: BLE001
+        print(f"  店名検索失敗 {name}: {e}", file=sys.stderr)
+        return None
+    time.sleep(1.1)  # OpenStreetMap の利用規約（1秒に1回まで）
+    hit = next((r for r in res if r.get("category", r.get("class")) in ("amenity", "shop")), None)
+    if hit:
+        cache[key] = {"lat": round(float(hit["lat"]), 6), "lng": round(float(hit["lon"]), 6),
+                      "matched": hit.get("display_name"), "source": "osm"}
+    else:
+        cache[key] = None
+    return cache[key]
+
+
 # ---------------------------------------------------------------- メイン
 
 def build(videos: list[dict], overrides: dict, geo_cache: dict, retry_failed: bool):
     shops: dict[str, dict] = {}
     unresolved: list[dict] = []
+    stats: dict[str, int] = {}
     ov_videos = overrides.get("videos", {})
 
-    for v in videos:
+    for i, v in enumerate(videos, 1):
+        if i % 50 == 0 or i == len(videos):
+            print(f"  場所を調べています… {i} / {len(videos)} 本目（店舗 {len(shops)} 件）", file=sys.stderr)
         ov = ov_videos.get(v["videoId"], {})
         if ov.get("skip"):
             continue
@@ -179,31 +223,41 @@ def build(videos: list[dict], overrides: dict, geo_cache: dict, retry_failed: bo
         name = ov.get("name") or info["name"]
         address = ov.get("address") or info["address"]
 
+        def note(reason: str):
+            unresolved.append({
+                "videoId": v["videoId"], "title": v["title"], "publishedAt": v["publishedAt"],
+                "guessedName": name or "", "guessedAddress": address or "", "reason": reason,
+            })
+
+        if not name and not address:
+            note("店の回ではなさそう")
+            continue
+        if looks_like_non_shop(name) and not address and "lat" not in ov:
+            note("店の回ではなさそう（カップ麺など）")
+            continue
+
+        located_by = "override"
         if "lat" in ov and "lng" in ov:
             geo = {"lat": ov["lat"], "lng": ov["lng"]}
-        elif address:
-            geo = geocode(address, geo_cache, retry_failed)
+        elif address and (geo := geocode(address, geo_cache, retry_failed)):
+            located_by = "address"
+        elif name and (geo := search_by_name(name, geo_cache, retry_failed)):
+            located_by = "name"
         else:
             geo = None
 
         if not name or not geo:
-            unresolved.append({
-                "videoId": v["videoId"], "title": v["title"], "publishedAt": v["publishedAt"],
-                "guessedName": name or "", "guessedAddress": address or "",
-                "reason": "no_address" if not address else ("geocode_failed" if not geo else "no_name"),
-            })
+            note("場所が見つからない" if name else "店名が分からない")
             continue
-        if info["nameSource"] == "title" and "name" not in ov:
-            unresolved.append({
-                "videoId": v["videoId"], "title": v["title"], "publishedAt": v["publishedAt"],
-                "guessedName": name, "guessedAddress": address or "", "reason": "name_from_title(要確認)",
-            })
+        stats[located_by] = stats.get(located_by, 0) + 1
+        if located_by == "name":
+            note("店名検索で配置（支店違いの可能性・要確認）")
 
         shop_id = ov.get("shopId") or "s_" + hashlib.sha1(
             f"{norm(name)}|{geo['lat']:.3f},{geo['lng']:.3f}".encode()).hexdigest()[:10]
         shop = shops.setdefault(shop_id, {
             "id": shop_id, "name": name, "address": address,
-            "prefecture": prefecture_of(address),
+            "prefecture": prefecture_of(address) or prefecture_of(geo.get("matched")),
             "latitude": geo["lat"], "longitude": geo["lng"], "videos": [],
         })
         shop["videos"].append({"videoId": v["videoId"], "title": v["title"], "publishedAt": v["publishedAt"]})
@@ -211,6 +265,7 @@ def build(videos: list[dict], overrides: dict, geo_cache: dict, retry_failed: bo
     for s in shops.values():
         s["videos"].sort(key=lambda x: x["publishedAt"] or "", reverse=True)
     ordered = sorted(shops.values(), key=lambda s: s["videos"][0]["publishedAt"] or "", reverse=True)
+    print("配置方法: " + ", ".join(f"{k}={v}" for k, v in sorted(stats.items())), file=sys.stderr)
     return ordered, unresolved
 
 

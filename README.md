@@ -50,6 +50,8 @@ plist がないビルドは自動的に「端末内保存モード」になる�
 
 ## 店舗データ（すするTVの動画 → 地図）
 
+**いちばん簡単な方法**：Finder で `店舗データを作る.command` をダブルクリック（初回だけ APIキーを聞かれ、Mac のキーチェーンに保存されます）。
+
 ```bash
 export YOUTUBE_API_KEY=...   # Google Cloud で YouTube Data API v3 を有効にして発行
 make data                    # 全動画を取得 → 店名・住所を抽出 → 座標化 → shops.json

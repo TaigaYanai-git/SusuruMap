@@ -11,6 +11,13 @@ PR を出すときは `[Unreleased]` に1行追記してください。リリー
 - iCloud 同期（訪問記録）を既定で有効化（無料アカウントは `CODE_SIGN_ENTITLEMENTS =` で無効化）
 
 ### Added
+- `店舗データを作る.command`：ダブルクリックで店舗データを生成（APIキーはキーチェーンに保存）
+- 住所がない回は店名で OpenStreetMap を検索して配置
+
+### Fixed
+- 動画タイトルからの店名抽出（「をすする 店名【飯テロ】」形式に対応）
+
+### Added (CI)
 - タグ push で TestFlight に自動配信する GitHub Actions ワークフロー
 
 ## [0.1.0] - 2026-09-25
