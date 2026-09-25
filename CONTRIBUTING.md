@@ -2,7 +2,7 @@
 
 ## ブランチと PR
 
-- `main` は常にビルドが通る状態。**直接 push しない**（GitHub の Branch protection で「PR 必須」「iOS Build が成功」を設定推奨）
+- `main` は常にビルドが通る状態。人の変更は**直接 push せず PR 経由**で（店舗データの週次更新だけは GitHub Actions が main に直接反映する）
 - 作業ブランチ名：`feat/〇〇`, `fix/〇〇`, `data/〇〇`, `docs/〇〇`
 - PR を出すと GitHub Actions がビルドと店舗データの検証を自動で行う
 - 仕様が変わる PR は `docs/SPEC.md` と `CHANGELOG.md` の `[Unreleased]` も更新する

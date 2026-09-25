@@ -1,9 +1,8 @@
 import Foundation
 import Observation
-import FirebaseCore
 
 /// アプリ全体で使うサービスの入れ物。
-/// GoogleService-Info.plist があれば Firebase（全ユーザー共有）、なければローカル保存で動く。
+/// レビューは iCloud（CloudKit）の公開データベースに保存し、全ユーザーで共有する。
 @Observable
 final class AppServices {
     let reviews: any ReviewService
@@ -17,18 +16,10 @@ final class AppServices {
     }
 
     static func make() -> AppServices {
-        if Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
-            FirebaseApp.configure()
-            return AppServices(
-                reviews: FirebaseReviewService(),
-                backendDescription: "Firebase（全ユーザーで共有）",
-                isSharedBackend: true
-            )
-        }
-        return AppServices(
-            reviews: LocalReviewService(),
-            backendDescription: "この端末のみ（Firebase未設定）",
-            isSharedBackend: false
+        AppServices(
+            reviews: CloudKitReviewService(),
+            backendDescription: "iCloud（全ユーザーで共有）",
+            isSharedBackend: true
         )
     }
 }

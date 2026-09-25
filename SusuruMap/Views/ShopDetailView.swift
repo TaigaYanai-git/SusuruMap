@@ -176,7 +176,7 @@ struct ShopDetailView: View {
             Text("みんなのレビュー")
         } footer: {
             if !services.isSharedBackend {
-                Text("Firebase未設定のため、レビューはこの端末にだけ保存されます。")
+                Text("レビューはこの端末にだけ保存されます。")
             }
         }
     }

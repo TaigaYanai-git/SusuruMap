@@ -63,8 +63,8 @@ struct ReviewComposer: View {
                     Text("投稿者名")
                 } footer: {
                     Text(services.isSharedBackend
-                         ? "レビューと写真はアプリの全ユーザーに公開されます。写真の位置情報は削除されます。"
-                         : "Firebase未設定のため、この端末にだけ保存されます。")
+                         ? "レビューと写真はアプリの全ユーザーに公開されます（投稿には iCloud へのサインインが必要）。写真の位置情報は削除されます。"
+                         : "この端末にだけ保存されます。")
                 }
                 if let errorMessage {
                     Section { Text(errorMessage).foregroundStyle(.red) }

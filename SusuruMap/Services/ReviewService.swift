@@ -1,6 +1,6 @@
 import Foundation
 
-/// レビューの保存先。Firebase 版とローカル版を差し替えられるようにプロトコル化。
+/// レビューの保存先。iCloud（CloudKit）版と端末内版を差し替えられるようにプロトコル化。
 protocol ReviewService {
     func currentUserID() async throws -> String
     func reviews(for shopId: String) async throws -> [Review]
@@ -9,7 +9,7 @@ protocol ReviewService {
     func report(_ review: Review, reason: String) async throws
 }
 
-/// Firebase 未設定時に使う、端末内だけのレビュー保存（開発・動作確認用）
+/// 端末内だけのレビュー保存（通信なしで画面を試すとき用）
 actor LocalReviewService: ReviewService {
     private let fileURL: URL
     private let photoDir: URL

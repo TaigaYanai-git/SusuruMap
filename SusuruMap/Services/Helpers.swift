@@ -4,7 +4,7 @@ import UIKit
 
 enum ImageCompressor {
     /// 長辺 maxDimension に縮小して JPEG 化。描き直すので EXIF（撮影位置など）も落ちる。
-    static func jpegData(from data: Data, maxDimension: CGFloat = 1600, quality: CGFloat = 0.7) -> Data? {
+    static func jpegData(from data: Data, maxDimension: CGFloat = 1200, quality: CGFloat = 0.7) -> Data? {
         guard let image = UIImage(data: data) else { return nil }
         let size = image.size
         let scale = min(1, maxDimension / max(size.width, size.height))

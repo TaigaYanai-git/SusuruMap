@@ -2,14 +2,15 @@
 // 自分だけの値（Team ID や Bundle ID）は Config/Local.xcconfig に書く（Git 管理外）。
 // xcconfig では "//" がコメント扱いになるので、URL は https:/$()/... と書く。
 
+// 各自 Local.xcconfig で上書きする
 BUNDLE_ID_PREFIX = com.example
 DEVELOPMENT_TEAM =
 
-// GitHub 上の最新店舗データ。main ブランチの shops.json を直接読む（公開リポジトリのみ）
-SHOPS_DATA_URL =
+// GitHub 上の最新店舗データ。main ブランチの shops.json を直接読む（公開リポジトリなので誰でも読める）
+SHOPS_DATA_URL = https:/$()/raw.githubusercontent.com/TaigaYanai-git/SusuruMap/main/SusuruMap/Resources/shops.json
 
 // 設定画面に表示するリポジトリの URL
-REPO_URL =
+REPO_URL = https:/$()/github.com/TaigaYanai-git/SusuruMap
 
 // ── iCloud 同期（訪問記録）─────────────────────────────
 // 有料の Apple Developer Program のチームでビルドする前提で ON。

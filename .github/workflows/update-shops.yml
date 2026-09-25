@@ -1,9 +1,9 @@
 name: Update Shop Data
 
-# 毎週月曜 3:00 (JST) に SUSURU TV. の新着動画を取り込み、差分があれば PR を作る。
+# 毎週月曜 3:00 (JST) に SUSURU TV. の新着動画を取り込み、検査に通れば main に直接反映する。
+# アプリは起動時に main の shops.json を読むので、アプリを作り直さなくても最新になる。
 # 必要な設定:
 #   - Settings > Secrets and variables > Actions に YOUTUBE_API_KEY
-#   - Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests" を ON
 on:
   schedule:
     - cron: "0 18 * * 0"
@@ -11,7 +11,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   update:
@@ -27,15 +26,14 @@ jobs:
         run: python3 tools/fetch_susuru_shops.py
       - name: Validate
         run: python3 tools/validate_shops.py
-      - name: Create pull request
-        uses: peter-evans/create-pull-request@v7
-        with:
-          branch: bot/update-shops
-          commit-message: "data: SUSURU TV. の新着動画から店舗データを更新"
-          title: "data: 店舗データの自動更新"
-          body: |
-            GitHub Actions による週次の自動更新です。
-            - `data/unresolved.csv` の「要確認」を見て、必要なら `data/overrides.json` を修正してください。
-            - マージすると、`SHOPS_DATA_URL` を設定したアプリには次回起動時に反映されます。
-          labels: data
-          delete-branch: true
+      - name: Commit to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add SusuruMap/Resources/shops.json data/geocode_cache.json data/unresolved.csv
+          if git diff --cached --quiet; then
+            echo "新しい店舗はありませんでした"
+          else
+            git commit -m "data: SUSURU TV. の新着動画から店舗データを更新"
+            git push
+          fi

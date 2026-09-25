@@ -4,7 +4,7 @@
 |---|---|
 | 対象バージョン | 0.1.0 |
 | 対応 OS | iOS 17.0 以上（iPhone） |
-| 技術 | SwiftUI / MapKit / SwiftData / EventKit / Firebase (Auth, Firestore, Storage) |
+| 技術 | SwiftUI / MapKit / SwiftData / EventKit / CloudKit（公開・非公開データベース） |
 
 > 仕様を変えるときは、このファイルと `CHANGELOG.md` を同じ PR で更新する。
 
@@ -78,24 +78,26 @@ SwiftData `Visit`：`shopId`, `shopName`, `visitedAt`, `memo`, `createdAt`
 - CloudKit 制約のため全項目にデフォルト値あり・unique 制約なし。項目を追加するときもデフォルト値を付ける
 - スキーマ変更を含むリリースでは、TestFlight 配信前に CloudKit Console で Production へデプロイする
 
-### 4.3 レビュー（Firebase）
+### 4.3 レビュー（CloudKit 公開データベース）
 
-| 場所 | フィールド |
+| レコード型 | フィールド |
 |---|---|
-| Firestore `shops/{shopId}/reviews/{reviewId}` | `userId`, `displayName`, `rating`(int 1-5), `comment`, `visitedAt?`, `photoURL?`, `photoPath?`, `createdAt`(server) |
-| Firestore `reports/{reportId}` | `shopId`, `reviewId`, `reviewUserId`, `reporterId`, `reason`, `createdAt` |
-| Storage `reviews/{uid}/{reviewId}.jpg` | 長辺1600px, JPEG 品質0.7, 5MB 未満 |
+| `Review` | `shopId`(String・Queryable), `authorID`(String), `displayName`, `rating`(Int 1-5), `comment`, `visitedAt`(Date?), `photo`(Asset?)。作成日時はシステムの `creationDate` |
+| `Report` | `shopId`, `reviewId`, `reviewAuthorID`, `reporterID`, `reason` |
 
-- 認証：Firebase 匿名ログイン（端末ごとに1ユーザー）
-- 権限：`firebase/firestore.rules`, `firebase/storage.rules`（読み取りは誰でも、作成・削除は本人のみ、更新不可）
-- `GoogleService-Info.plist` がないビルドでは、レビューは端末内（`Documents/local_reviews.json`）に保存
+- 本人の識別：iCloud のユーザー ID（`CKContainer.userRecordID`）。アプリを消しても同じ Apple ID なら自分の投稿を削除できる
+- 権限（CloudKit 標準）：World＝読む／iCloud サインイン済み＝作る／作成者＝書き換え・削除
+- 投稿には iCloud へのサインインが必要（閲覧は不要）
+- 写真は長辺1200px・JPEG品質0.7（位置情報は除去）
+- 費用：Apple Developer Program に含まれる無料枠内（ユーザー数に応じて枠が増える）
+- 本番（TestFlight / App Store）では CloudKit Console でスキーマと索引を Production にデプロイする
 
 ## 5. 設定値（`Config/*.xcconfig`）
 
 | キー | 用途 |
 |---|---|
 | `DEVELOPMENT_TEAM` / `BUNDLE_ID_PREFIX` | 各自の署名設定（`Local.xcconfig`、Git 管理外） |
-| `SHOPS_DATA_URL` | GitHub の raw `shops.json` URL。空なら同梱データのみ |
+| `SHOPS_DATA_URL` | GitHub（公開）の raw `shops.json` URL。`Base.xcconfig` に記載済み |
 | `REPO_URL` | 設定画面に出すリポジトリ URL |
 | `ICLOUD_CONTAINER` | iCloud コンテナ ID（既定 `iCloud.$(BUNDLE_ID_PREFIX).susurumap`） |
 | `CODE_SIGN_ENTITLEMENTS` | 既定で iCloud 有効。無料アカウントでは空にする |

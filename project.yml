@@ -15,11 +15,6 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
 
-packages:
-  Firebase:
-    url: https://github.com/firebase/firebase-ios-sdk
-    from: "12.0.0"
-
 targets:
   SusuruMap:
     type: application
@@ -51,13 +46,6 @@ targets:
         REPO_URL: $(REPO_URL)
         # CloudKit の変更通知を受けてバックグラウンドで同期するため
         UIBackgroundModes: [remote-notification]
-    dependencies:
-      - package: Firebase
-        product: FirebaseAuth
-      - package: Firebase
-        product: FirebaseFirestore
-      - package: Firebase
-        product: FirebaseStorage
 
 schemes:
   SusuruMap:
