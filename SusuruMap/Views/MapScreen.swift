@@ -209,6 +209,7 @@ struct ClusterBadge: View {
 struct RouteCard: View {
     @Environment(RoutePlanner.self) private var planner
     @Environment(\.openURL) private var openURL
+    @AppStorage(MapApp.storageKey) private var mapApp: MapApp = .apple
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -249,8 +250,17 @@ struct RouteCard: View {
             .font(.subheadline)
 
             HStack {
+                Text("ナビに使うアプリ").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Picker("ナビに使うアプリ", selection: $mapApp) {
+                    ForEach(MapApp.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.menu)
+            }
+
+            HStack {
                 Button {
-                    if let url = planner.navigationURL() { openURL(url) }
+                    if let url = planner.navigationURL(app: mapApp) { openURL(url) }
                 } label: {
                     Label("ナビ開始", systemImage: "location.fill")
                         .frame(maxWidth: .infinity)
@@ -258,7 +268,7 @@ struct RouteCard: View {
                 .buttonStyle(.borderedProminent)
 
                 Button {
-                    if let url = planner.navigationURL(transit: true) { openURL(url) }
+                    if let url = planner.navigationURL(app: mapApp, transit: true) { openURL(url) }
                 } label: {
                     Label("電車で", systemImage: "tram.fill")
                         .frame(maxWidth: .infinity)

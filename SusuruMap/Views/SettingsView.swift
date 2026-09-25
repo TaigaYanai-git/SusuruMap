@@ -6,6 +6,7 @@ struct SettingsView: View {
     @AppStorage("displayName") private var displayName = ""
     @AppStorage("addVisitsToCalendar") private var addToCalendar = false
     @AppStorage(BlockList.storageKey) private var blockedRaw = ""
+    @AppStorage(MapApp.storageKey) private var mapApp: MapApp = .apple
 
     var body: some View {
         let blockedCount = BlockList.decode(blockedRaw).count
@@ -14,6 +15,15 @@ struct SettingsView: View {
             Form {
                 Section("プロフィール") {
                     TextField("ニックネーム（レビューに表示）", text: $displayName)
+                }
+                Section {
+                    Picker("ナビに使う地図アプリ", selection: $mapApp) {
+                        ForEach(MapApp.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                } header: {
+                    Text("地図")
+                } footer: {
+                    Text("「ナビ開始」「電車で」や、店の場所を開くときに使います。Google マップは、アプリが入っていなければブラウザで開きます。")
                 }
                 Section {
                     Toggle("記録時にカレンダーにも登録", isOn: $addToCalendar)

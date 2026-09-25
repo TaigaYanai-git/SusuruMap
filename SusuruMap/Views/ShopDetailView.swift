@@ -15,6 +15,7 @@ struct ShopDetailView: View {
     @Query private var visits: [Visit]
 
     @AppStorage(BlockList.storageKey) private var blockedRaw = ""
+    @AppStorage(MapApp.storageKey) private var mapApp: MapApp = .apple
 
     @State private var reviews: [Review] = []
     @State private var myUserID: String?
@@ -107,9 +108,9 @@ struct ShopDetailView: View {
                       systemImage: "flag.fill")
             }
             .disabled(planner.destination?.id == shop.id)
-            if let url = shop.appleMapsURL {
+            if let url = mapApp.placeURL(name: shop.name, latitude: shop.latitude, longitude: shop.longitude) {
                 Button { openURL(url) } label: {
-                    Label("マップアプリで開く", systemImage: "map")
+                    Label("\(mapApp.rawValue)で開く", systemImage: "map")
                 }
             }
         }

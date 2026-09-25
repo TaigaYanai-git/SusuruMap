@@ -66,14 +66,51 @@ final class RoutePlanner {
         fitRequest += 1
     }
 
-    /// Apple マップでナビを始める URL
-    func navigationURL(transit: Bool = false) -> URL? {
+    /// 選んだ地図アプリでナビを始める URL
+    func navigationURL(app: MapApp, transit: Bool = false) -> URL? {
         guard let d = destination else { return nil }
-        var c = URLComponents(string: "https://maps.apple.com/")
-        c?.queryItems = [
-            URLQueryItem(name: "daddr", value: "\(d.latitude),\(d.longitude)"),
-            URLQueryItem(name: "dirflg", value: transit ? "r" : mode.appleMapsFlag),
-        ]
+        return app.directionsURL(latitude: d.latitude, longitude: d.longitude,
+                                 mode: transit ? .transit : (mode == .walking ? .walking : .driving))
+    }
+}
+
+/// ナビや店の表示に使う地図アプリ（設定に保存）
+enum MapApp: String, CaseIterable, Identifiable {
+    case apple = "Apple マップ"
+    case google = "Google マップ"
+    var id: Self { self }
+    static let storageKey = "mapApp"
+
+    enum Travel { case walking, driving, transit }
+
+    /// 経路案内の URL。Google マップはアプリが入っていればアプリ、なければブラウザで開く
+    func directionsURL(latitude: Double, longitude: Double, mode: Travel) -> URL? {
+        let dest = "\(latitude),\(longitude)"
+        switch self {
+        case .apple:
+            let flag: String
+            switch mode { case .walking: flag = "w"; case .driving: flag = "d"; case .transit: flag = "r" }
+            return Self.url("https://maps.apple.com/", ["daddr": dest, "dirflg": flag])
+        case .google:
+            let travel: String
+            switch mode { case .walking: travel = "walking"; case .driving: travel = "driving"; case .transit: travel = "transit" }
+            return Self.url("https://www.google.com/maps/dir/", ["api": "1", "destination": dest, "travelmode": travel])
+        }
+    }
+
+    /// 店の場所を表示する URL
+    func placeURL(name: String, latitude: Double, longitude: Double) -> URL? {
+        switch self {
+        case .apple:
+            return Self.url("https://maps.apple.com/", ["q": name, "ll": "\(latitude),\(longitude)"])
+        case .google:
+            return Self.url("https://www.google.com/maps/search/", ["api": "1", "query": "\(latitude),\(longitude)"])
+        }
+    }
+
+    private static func url(_ base: String, _ items: [String: String]) -> URL? {
+        var c = URLComponents(string: base)
+        c?.queryItems = items.sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
         return c?.url
     }
 }

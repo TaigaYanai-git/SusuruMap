@@ -34,16 +34,6 @@ struct Shop: Identifiable, Codable, Hashable {
         return [name, address ?? "", prefecture ?? ""]
             .contains { $0.localizedCaseInsensitiveContains(q) }
     }
-
-    /// Apple マップで開く URL
-    var appleMapsURL: URL? {
-        var c = URLComponents(string: "https://maps.apple.com/")
-        c?.queryItems = [
-            URLQueryItem(name: "q", value: name),
-            URLQueryItem(name: "ll", value: "\(latitude),\(longitude)"),
-        ]
-        return c?.url
-    }
 }
 
 struct ShopVideo: Identifiable, Codable, Hashable {
