@@ -8,6 +8,10 @@ struct ShopDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.openURL) private var openURL
     @Environment(AppServices.self) private var services
+    @Environment(LocationProvider.self) private var location
+    @Environment(RoutePlanner.self) private var planner
+    @Environment(AppRouter.self) private var router
+    @Environment(\.dismiss) private var dismiss
     @Query private var visits: [Visit]
 
     @AppStorage(BlockList.storageKey) private var blockedRaw = ""
@@ -78,6 +82,10 @@ struct ShopDetailView: View {
                 if let address = shop.address {
                     Text(address).font(.subheadline).foregroundStyle(.secondary)
                 }
+                if let meters = location.distance(to: shop) {
+                    Label("現在地から \(meters.distanceText)", systemImage: "location")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
                 HStack(spacing: 12) {
                     if let avg = visibleReviews.averageRating {
                         StarRatingView(rating: avg)
@@ -90,9 +98,18 @@ struct ShopDetailView: View {
                     }
                 }
             }
+            Button {
+                planner.setDestination(shop)
+                router.tab = .map
+                dismiss()
+            } label: {
+                Label(planner.destination?.id == shop.id ? "目的地に設定中" : "ここへ行く（目的地に設定）",
+                      systemImage: "flag.fill")
+            }
+            .disabled(planner.destination?.id == shop.id)
             if let url = shop.appleMapsURL {
                 Button { openURL(url) } label: {
-                    Label("マップアプリで経路を見る", systemImage: "arrow.triangle.turn.up.right.diamond")
+                    Label("マップアプリで開く", systemImage: "map")
                 }
             }
         }

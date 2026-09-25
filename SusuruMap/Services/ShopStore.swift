@@ -20,8 +20,11 @@ final class ShopStore {
         defer { isLoading = false }
 
         if shops.isEmpty {
-            let cached = Self.readCatalog(at: Self.cacheURL)
-            let bundled = Bundle.main.url(forResource: "shops", withExtension: "json").flatMap(Self.readCatalog(at:))
+            // 数千件の JSON を読むと一瞬固まるので、画面を動かす処理（メインスレッド）とは別の場所で読む
+            let (cached, bundled) = await Task.detached(priority: .userInitiated) {
+                (Self.readCatalog(at: Self.cacheURL),
+                 Bundle.main.url(forResource: "shops", withExtension: "json").flatMap(Self.readCatalog(at:)))
+            }.value
             if let cached, (cached.generatedAt ?? "") > (bundled?.generatedAt ?? "") {
                 apply(cached, source: "前回ダウンロード分")
             } else if let bundled {
@@ -35,7 +38,9 @@ final class ShopStore {
             guard (response as? HTTPURLResponse)?.statusCode == 200 else {
                 throw URLError(.badServerResponse)
             }
-            let catalog = try JSONDecoder().decode(ShopCatalog.self, from: data)
+            let catalog = try await Task.detached(priority: .userInitiated) {
+                try JSONDecoder().decode(ShopCatalog.self, from: data)
+            }.value
             try? data.write(to: Self.cacheURL, options: .atomic)
             apply(catalog, source: "GitHub（最新）")
             lastError = nil

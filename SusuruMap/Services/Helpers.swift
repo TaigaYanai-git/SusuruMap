@@ -2,16 +2,6 @@ import CoreLocation
 import MapKit
 import UIKit
 
-/// 現在地ボタン用の位置情報許可
-final class LocationPermission {
-    private let manager = CLLocationManager()
-    func requestIfNeeded() {
-        if manager.authorizationStatus == .notDetermined {
-            manager.requestWhenInUseAuthorization()
-        }
-    }
-}
-
 enum ImageCompressor {
     /// 長辺 maxDimension に縮小して JPEG 化。描き直すので EXIF（撮影位置など）も落ちる。
     static func jpegData(from data: Data, maxDimension: CGFloat = 1600, quality: CGFloat = 0.7) -> Data? {
