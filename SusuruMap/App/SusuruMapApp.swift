@@ -30,6 +30,7 @@ struct SusuruMapApp: App {
 
 struct RootView: View {
     @Environment(ShopStore.self) private var shopStore
+    @Environment(\.modelContext) private var context
     @Environment(AppRouter.self) private var router
 
     var body: some View {
@@ -45,6 +46,24 @@ struct RootView: View {
                 .tabItem { Label("設定", systemImage: "gearshape") }
                 .tag(AppRouter.Tab.settings)
         }
-        .task { await shopStore.load() }
+        .task {
+            await shopStore.load()
+            migrateMergedVisits()
+        }
+    }
+
+    /// 店舗データで別名の重複がまとめられたとき、古い ID の「行った！」を新しい ID に付け替える
+    private func migrateMergedVisits() {
+        guard let visits = try? context.fetch(FetchDescriptor<Visit>()) else { return }
+        var changed = false
+        for visit in visits {
+            let canonical = shopStore.canonicalID(visit.shopId)
+            if canonical != visit.shopId, let shop = shopStore.shop(id: canonical) {
+                visit.shopId = canonical
+                visit.shopName = shop.name
+                changed = true
+            }
+        }
+        if changed { try? context.save() }
     }
 }

@@ -118,13 +118,44 @@ struct ReviewComposer: View {
 
 struct ReviewRow: View {
     let review: Review
+    /// 自分の投稿なら true（「あなた」と削除ボタンを出す）
+    var isMine = false
+    var onDelete: () -> Void = {}
+    var onReport: () -> Void = {}
+    var onHideUser: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
+            HStack(spacing: 6) {
                 Text(review.displayName).font(.subheadline.bold())
+                if isMine {
+                    Text("あなた")
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.15), in: Capsule())
+                        .foregroundStyle(Color.accentColor)
+                }
                 Spacer()
                 StarRatingView(rating: Double(review.rating)).font(.caption)
+                if isMine {
+                    Button(role: .destructive, action: onDelete) {
+                        Image(systemName: "trash")
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.red)
+                    .accessibilityLabel("自分のレビューを削除")
+                } else {
+                    Menu {
+                        Button("通報する", systemImage: "exclamationmark.bubble", action: onReport)
+                        Button("このユーザーを非表示", systemImage: "eye.slash", action: onHideUser)
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("その他の操作")
+                }
             }
             if let visitedAt = review.visitedAt {
                 Text("訪問日: \(visitedAt.formatted(date: .abbreviated, time: .omitted))")

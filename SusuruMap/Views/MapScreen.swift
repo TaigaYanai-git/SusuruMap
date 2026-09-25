@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import MapKit
+import UIKit
 
 enum VisitFilter: String, CaseIterable, Identifiable {
     case all = "すべて"
@@ -13,6 +14,7 @@ struct MapScreen: View {
     @Environment(ShopStore.self) private var store
     @Environment(RoutePlanner.self) private var planner
     @Environment(LocationProvider.self) private var location
+    @Environment(\.modelContext) private var context
     @Query private var visits: [Visit]
 
     /// 起動時は現在地を中心に（許可がなければ東京駅周辺）
@@ -22,6 +24,7 @@ struct MapScreen: View {
     @State private var filter: VisitFilter = .all
     @State private var searchText = ""
     @State private var showingNearby = false
+    @State private var followingHeading = false
 
     var body: some View {
         let visitedIDs = Set(visits.map(\.shopId))
@@ -39,7 +42,9 @@ struct MapScreen: View {
 
         NavigationStack {
             Map(position: $position, selection: $selectedID) {
+                // 自分の位置は青（お店のオレンジ・緑と見分けやすく）
                 UserAnnotation()
+                    .tint(Color.blue)
 
                 if let route = planner.route {
                     MapPolyline(route.polyline)
@@ -78,6 +83,8 @@ struct MapScreen: View {
                         .tag(dest.id)
                 }
             }
+            // 地図の基本色を青に（自分の位置の点と、現在地ボタンなどの色）。お店のピンは個別に色を指定済み
+            .tint(Color.blue)
             .mapControls {
                 MapUserLocationButton()
                 MapCompass()
@@ -85,8 +92,12 @@ struct MapScreen: View {
             }
             .onMapCameraChange(frequency: .onEnd) { context in
                 visibleRegion = context.region
+                if followingHeading && !position.followsUserHeading { followingHeading = false }
             }
             .safeAreaInset(edge: .top) {
+                if planner.isNavigating {
+                    NavigationBanner()
+                } else {
                 VStack(spacing: 6) {
                     Picker("表示", selection: $filter) {
                         ForEach(VisitFilter.allCases) { Text($0.rawValue).tag($0) }
@@ -99,9 +110,13 @@ struct MapScreen: View {
                 .padding(8)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal)
+                }
             }
             .safeAreaInset(edge: .bottom) {
-                if planner.destination != nil {
+                if planner.isNavigating {
+                    NavigationBottomBar()
+                        .padding(.bottom, 8)
+                } else if planner.destination != nil {
                     RouteCard()
                         .padding(.bottom, 8)
                 } else if let error = store.lastError {
@@ -127,6 +142,20 @@ struct MapScreen: View {
                         Label("近くの店", systemImage: "location.circle")
                     }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    // 押すと、地図が自分の向いている方向に合わせて回る（もう一度押すと北が上に戻る）
+                    Button {
+                        followingHeading.toggle()
+                        withAnimation {
+                            position = followingHeading
+                                ? .userLocation(followsHeading: true, fallback: .region(.tokyo))
+                                : .userLocation(fallback: .region(.tokyo))
+                        }
+                    } label: {
+                        Label(followingHeading ? "北を上にする" : "向いている方向に合わせる",
+                              systemImage: followingHeading ? "location.north.line.fill" : "location.north.line")
+                    }
+                }
             }
             .searchable(text: $searchText, prompt: "店名・地域で検索")
             .onSubmit(of: .search) {
@@ -147,6 +176,28 @@ struct MapScreen: View {
                 .presentationDetents([.medium, .large])
             }
             .onChange(of: planner.fitRequest) { _, _ in fitToRoute() }
+            .onChange(of: location.location) { _, here in
+                if let here { planner.update(with: here) }
+            }
+            .onChange(of: planner.isNavigating) { _, navigating in
+                location.setNavigating(navigating)
+                // ナビ中は画面が自動で消えないようにする
+                UIApplication.shared.isIdleTimerDisabled = navigating
+                withAnimation {
+                    followingHeading = navigating
+                    position = navigating
+                        ? .userLocation(followsHeading: true, fallback: .region(.tokyo))
+                        : .userLocation(fallback: .region(.tokyo))
+                }
+            }
+            .alert("到着しました！", isPresented: Binding(
+                get: { planner.arrivedAt != nil }, set: { if !$0 { planner.clearArrival() } }
+            ), presenting: planner.arrivedAt) { shop in
+                Button("行った！を記録") { recordArrival(at: shop) }
+                Button("閉じる", role: .cancel) {}
+            } message: { shop in
+                Text("\(shop.name) に着きました。")
+            }
             .onAppear { location.start() }
         }
     }
@@ -156,6 +207,16 @@ struct MapScreen: View {
             get: { selectedID.flatMap { store.shop(id: $0) } },
             set: { selectedID = $0?.id }
         )
+    }
+
+    /// 到着したら、今日まだ記録していなければ「行った！」を記録する
+    private func recordArrival(at shop: Shop) {
+        let already = visits.contains { $0.shopId == shop.id && Calendar.current.isDateInToday($0.visitedAt) }
+        if !already {
+            context.insert(Visit(shopId: shop.id, shopName: shop.name, visitedAt: Date()))
+            try? context.save()
+        }
+        planner.clear()
     }
 
     private func focus(on shop: Shop) {
@@ -214,7 +275,7 @@ struct ClusterBadge: View {
 struct RouteCard: View {
     @Environment(RoutePlanner.self) private var planner
     @Environment(\.openURL) private var openURL
-    @AppStorage(MapApp.storageKey) private var mapApp: MapApp = .apple
+    @AppStorage(MapApp.storageKey) private var mapApp: MapApp = .inApp
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -265,21 +326,107 @@ struct RouteCard: View {
 
             HStack {
                 Button {
-                    if let url = planner.navigationURL(app: mapApp) { openURL(url) }
+                    if mapApp == .inApp {
+                        planner.startNavigation()
+                    } else if let url = planner.navigationURL(app: mapApp) {
+                        openURL(url)
+                    }
                 } label: {
                     Label("ナビ開始", systemImage: "location.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(mapApp == .inApp && planner.route == nil)
 
                 Button {
-                    if let url = planner.navigationURL(app: mapApp, transit: true) { openURL(url) }
+                    // 電車の乗り換えはアプリ内では案内できないので、外部の地図アプリで開く
+                    if let url = planner.navigationURL(app: mapApp.externalApp, transit: true) { openURL(url) }
                 } label: {
                     Label("電車で", systemImage: "tram.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
             }
+        }
+        .padding()
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal)
+    }
+}
+
+/// ナビ中、画面上に出る「次の曲がり角」の案内
+struct NavigationBanner: View {
+    @Environment(RoutePlanner.self) private var planner
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: symbol(for: planner.currentInstruction ?? ""))
+                .font(.system(size: 34, weight: .bold))
+                .frame(width: 44)
+            VStack(alignment: .leading, spacing: 4) {
+                if let meters = planner.distanceToNextTurn {
+                    Text(meters.distanceText)
+                        .font(.title2.bold())
+                        .monospacedDigit()
+                }
+                Text(planner.currentInstruction ?? "経路に沿って進んでください")
+                    .font(.headline)
+                    .lineLimit(3)
+            }
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(.white)
+        .padding()
+        .background(Color.blue.gradient, in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// 案内の文から矢印の向きを決める
+    private func symbol(for text: String) -> String {
+        if text.contains("Uターン") { return "arrow.uturn.down" }
+        if text.contains("右") { return "arrow.turn.up.right" }
+        if text.contains("左") { return "arrow.turn.up.left" }
+        if text.contains("目的地") || text.contains("到着") { return "flag.checkered" }
+        return "arrow.up"
+    }
+}
+
+/// ナビ中、画面下に出る残り時間・距離と終了ボタン
+struct NavigationBottomBar: View {
+    @Environment(RoutePlanner.self) private var planner
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                if let t = planner.remainingTime {
+                    Text(t.travelTimeText).font(.title3.bold()).monospacedDigit()
+                }
+                HStack(spacing: 6) {
+                    if let d = planner.remainingDistance { Text(d.distanceText) }
+                    if let t = planner.remainingTime {
+                        Text("・\(Date().addingTimeInterval(t).formatted(date: .omitted, time: .shortened)) 着")
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+                Text(planner.destination?.name ?? "")
+                    .font(.caption)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Button {
+                planner.toggleVoice()
+            } label: {
+                Image(systemName: planner.voiceEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                    .font(.title3)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityLabel(planner.voiceEnabled ? "音声案内をオフ" : "音声案内をオン")
+            Button("終了") { planner.stopNavigation() }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))

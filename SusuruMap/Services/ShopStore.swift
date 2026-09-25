@@ -15,6 +15,9 @@ final class ShopStore {
 
     func shop(id: String) -> Shop? { index[id] }
 
+    /// 古い ID（重複をまとめる前の ID）を今の ID に直す
+    func canonicalID(_ id: String) -> String { index[id]?.id ?? id }
+
     func load() async {
         isLoading = true
         defer { isLoading = false }
@@ -51,7 +54,12 @@ final class ShopStore {
 
     private func apply(_ catalog: ShopCatalog, source: String) {
         shops = catalog.shops
-        index = Dictionary(catalog.shops.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        var map: [String: Shop] = [:]
+        for shop in catalog.shops {
+            for alias in shop.aliases ?? [] where map[alias] == nil { map[alias] = shop }
+        }
+        for shop in catalog.shops { map[shop.id] = shop }
+        index = map
         dataVersion = catalog.version
         self.source = source
     }

@@ -20,6 +20,8 @@ data/overrides.json で手動修正できる（修正は PR で共有 → GitHub
 """
 import argparse
 import csv
+import difflib
+import math
 import hashlib
 import json
 import os
@@ -256,14 +258,131 @@ def build(videos, overrides, geo_cache, retry_failed):
             "id": shop_id, "name": name, "address": address,
             "prefecture": prefecture_of(address) or prefecture_of(geo.get("matched")),
             "latitude": geo["lat"], "longitude": geo["lng"], "videos": [],
+            "_located": located_by,
         })
         shop["videos"].append({"videoId": v["videoId"], "title": v["title"], "publishedAt": v["publishedAt"]})
 
-    for s in shops.values():
+    merged_shops, merges = merge_duplicates(list(shops.values()))
+    for s in merged_shops:
         s["videos"].sort(key=lambda x: x["publishedAt"] or "", reverse=True)
-    ordered = sorted(shops.values(), key=lambda s: s["videos"][0]["publishedAt"] or "", reverse=True)
+        s.pop("_located", None)
+    ordered = sorted(merged_shops, key=lambda s: s["videos"][0]["publishedAt"] or "", reverse=True)
     print("配置方法: " + ", ".join(f"{k}={v}" for k, v in sorted(stats.items())), file=sys.stderr)
-    return ordered, unresolved
+    print(f"別名の重複をまとめました: {len(merges)} 件（data/merged.csv）", file=sys.stderr)
+    return ordered, unresolved, merges
+
+
+# ---------------------------------------------------------------- 別名の重複をまとめる
+#「ラーメンししょう」と「ししょう」のように、同じ店が動画ごとに別の書き方で登録されるのを防ぐ。
+#   ・店名から「ラーメン」「中華そば」「〇〇店」などの共通部分を除いた“芯”を比べる
+#   ・芯が同じ／片方がもう片方を含む／よく似ている、かつ近い場所にあれば同じ店とみなす
+#   ・まとめた店の古い ID は aliases に残す（アプリ側で「行った！」やレビューを引き継ぐため）
+# まとめたくない（別の店だった）場合は data/overrides.json で shopId を別々に指定する。
+
+GENERIC_WORDS = ["ラーメン", "らーめん", "らあめん", "らぁめん", "拉麺", "拉麵", "中華そば", "中華蕎麦",
+                 "支那そば", "つけ麺", "つけめん", "油そば", "まぜそば", "麺屋", "麺家", "麺処", "麺や",
+                 "総本店", "本店", "本舗", "店"]
+NEAR_SIMILAR_M = 300    # 似た名前ならこの距離まで同じ店とみなす
+NEAR_SAME_CORE_M = 2000  # 芯が完全に同じならこの距離まで（住所と店名検索で場所が少しずれる場合）
+
+
+def kata_to_hira(text):
+    return "".join(chr(ord(c) - 0x60) if "ァ" <= c <= "ヶ" else c for c in text)
+
+
+GENERIC_CORES = sorted({kata_to_hira(norm(w)).lower() for w in GENERIC_WORDS}, key=len, reverse=True)
+
+
+def name_core(name):
+    t = kata_to_hira(norm(name)).lower()
+    t = re.sub(r"[\s・\-_/()（）「」『』【】!！?？.。、,'\"&＆~〜]", "", t)
+    for w in GENERIC_CORES:
+        t = t.replace(w, "")
+    return t
+
+
+def distance_m(a, b):
+    lat1, lon1, lat2, lon2 = map(math.radians, (a["latitude"], a["longitude"], b["latitude"], b["longitude"]))
+    h = math.sin((lat2 - lat1) / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2
+    return 6371000 * 2 * math.asin(math.sqrt(h))
+
+
+def same_shop(a, b):
+    ca, cb = a["_core"], b["_core"]
+    if not ca or not cb:
+        return False
+    d = distance_m(a, b)
+    if ca == cb:
+        return d <= NEAR_SAME_CORE_M
+    if d > NEAR_SIMILAR_M:
+        return False
+    shorter = min(len(ca), len(cb))
+    if shorter >= 2 and (ca in cb or cb in ca):
+        return True
+    return difflib.SequenceMatcher(None, ca, cb).ratio() >= 0.85
+
+
+def merge_duplicates(shops):
+    for s in shops:
+        s["_core"] = name_core(s["name"])
+    # 近い店どうしだけ比べる（約2km のマス目で分ける）
+    cell = 0.02
+    grid = {}
+    for i, s in enumerate(shops):
+        grid.setdefault((int(s["latitude"] // cell), int(s["longitude"] // cell)), []).append(i)
+    parent = list(range(len(shops)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for (gy, gx), members in grid.items():
+        neighbors = [j for dy in (-1, 0, 1) for dx in (-1, 0, 1) for j in grid.get((gy + dy, gx + dx), [])]
+        for i in members:
+            for j in neighbors:
+                if j > i and find(i) != find(j) and same_shop(shops[i], shops[j]):
+                    parent[find(j)] = find(i)
+
+    groups = {}
+    for i in range(len(shops)):
+        groups.setdefault(find(i), []).append(shops[i])
+
+    result, merges = [], []
+    for members in groups.values():
+        if len(members) == 1:
+            s = members[0]
+            s.pop("_core", None)
+            result.append(s)
+            continue
+        # 動画が一番多い（同数なら古い動画がある）ものを代表にする → ID が毎回変わらない
+        members.sort(key=lambda s: (-len(s["videos"]), min(v["publishedAt"] or "9" for v in s["videos"])))
+        main = dict(members[0])
+        # 名前は、使われた動画数が多い書き方。同数なら長い方（「ラーメンししょう」＞「ししょう」）
+        name_votes = {}
+        for s in members:
+            name_votes[s["name"]] = name_votes.get(s["name"], 0) + len(s["videos"])
+        main["name"] = max(name_votes, key=lambda n: (name_votes[n], len(n)))
+        # 場所は住所から求めたものを優先
+        located = next((s for s in members if s.get("_located") in ("override", "address")), members[0])
+        main["latitude"], main["longitude"] = located["latitude"], located["longitude"]
+        main["address"] = located.get("address") or main.get("address")
+        main["prefecture"] = located.get("prefecture") or main.get("prefecture")
+        seen, videos = set(), []
+        for s in members:
+            for v in s["videos"]:
+                if v["videoId"] not in seen:
+                    seen.add(v["videoId"])
+                    videos.append(v)
+        main["videos"] = videos
+        main["aliases"] = sorted({s["id"] for s in members[1:]} | set(main.get("aliases", [])))
+        main.pop("_core", None)
+        result.append(main)
+        merges.append({"id": main["id"], "name": main["name"],
+                       "mergedNames": " / ".join(sorted({s["name"] for s in members})),
+                       "mergedIds": " ".join(main["aliases"])})
+    return result, merges
 
 
 def main():
@@ -290,7 +409,7 @@ def main():
 
     overrides = load_json(OVERRIDES, {"videos": {}})
     geo_cache = load_json(GEOCODE_CACHE, {})
-    shops, unresolved = build(videos, overrides, geo_cache, args.retry_failed)
+    shops, unresolved, merges = build(videos, overrides, geo_cache, args.retry_failed)
 
     GEOCODE_CACHE.write_text(json.dumps(geo_cache, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
     now = datetime.now(timezone.utc)
@@ -301,6 +420,11 @@ def main():
         "shops": shops,
     }
     OUTPUT.write_text(json.dumps(catalog, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+
+    with (DATA / "merged.csv").open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=["id", "name", "mergedNames", "mergedIds"])
+        w.writeheader()
+        w.writerows(merges)
 
     with UNRESOLVED.open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=["videoId", "reason", "guessedName", "guessedAddress", "title", "publishedAt"])

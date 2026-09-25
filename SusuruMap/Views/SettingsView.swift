@@ -6,7 +6,7 @@ struct SettingsView: View {
     @AppStorage("displayName") private var displayName = ""
     @AppStorage("addVisitsToCalendar") private var addToCalendar = false
     @AppStorage(BlockList.storageKey) private var blockedRaw = ""
-    @AppStorage(MapApp.storageKey) private var mapApp: MapApp = .apple
+    @AppStorage(MapApp.storageKey) private var mapApp: MapApp = .inApp
 
     var body: some View {
         let blockedCount = BlockList.decode(blockedRaw).count
@@ -23,7 +23,7 @@ struct SettingsView: View {
                 } header: {
                     Text("地図")
                 } footer: {
-                    Text("「ナビ開始」「電車で」や、店の場所を開くときに使います。Google マップは、アプリが入っていなければブラウザで開きます。")
+                    Text("「すするマップ」はアプリの中で道案内します（徒歩・車）。電車の乗り換えは Apple マップで開きます。Google マップは、アプリが入っていなければブラウザで開きます。")
                 }
                 Section {
                     Toggle("記録時にカレンダーにも登録", isOn: $addToCalendar)

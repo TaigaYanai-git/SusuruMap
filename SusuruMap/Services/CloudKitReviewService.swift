@@ -25,8 +25,8 @@ final class CloudKitReviewService: ReviewService {
         try await container.userRecordID().recordName
     }
 
-    func reviews(for shopId: String) async throws -> [Review] {
-        let query = CKQuery(recordType: "Review", predicate: NSPredicate(format: "shopId == %@", shopId))
+    func reviews(for shopIDs: [String]) async throws -> [Review] {
+        let query = CKQuery(recordType: "Review", predicate: NSPredicate(format: "shopId IN %@", shopIDs))
         let (results, _) = try await database.records(matching: query, resultsLimit: 100)
         return results
             .compactMap { try? $0.1.get() }

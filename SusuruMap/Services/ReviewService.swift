@@ -3,7 +3,8 @@ import Foundation
 /// レビューの保存先。iCloud（CloudKit）版と端末内版を差し替えられるようにプロトコル化。
 protocol ReviewService {
     func currentUserID() async throws -> String
-    func reviews(for shopId: String) async throws -> [Review]
+    /// その店のレビュー（古い ID に付いたものも含めて）
+    func reviews(for shopIDs: [String]) async throws -> [Review]
     func post(_ draft: ReviewDraft) async throws
     func delete(_ review: Review) async throws
     func report(_ review: Review, reason: String) async throws
@@ -36,9 +37,9 @@ actor LocalReviewService: ReviewService {
 
     func currentUserID() async throws -> String { userID }
 
-    func reviews(for shopId: String) async throws -> [Review] {
+    func reviews(for shopIDs: [String]) async throws -> [Review] {
         try all()
-            .filter { $0.shopId == shopId }
+            .filter { shopIDs.contains($0.shopId) }
             .sorted { $0.createdAt > $1.createdAt }
             .map { review in
                 review.with(photoURL: review.photoURL.map { photoDir.appendingPathComponent($0.lastPathComponent) })

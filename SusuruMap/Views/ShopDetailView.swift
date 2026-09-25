@@ -15,18 +15,22 @@ struct ShopDetailView: View {
     @Query private var visits: [Visit]
 
     @AppStorage(BlockList.storageKey) private var blockedRaw = ""
-    @AppStorage(MapApp.storageKey) private var mapApp: MapApp = .apple
+    @AppStorage(MapApp.storageKey) private var mapApp: MapApp = .inApp
+    @AppStorage("addVisitsToCalendar") private var addToCalendar = false
 
     @State private var reviews: [Review] = []
     @State private var myUserID: String?
     @State private var isLoadingReviews = false
     @State private var reviewError: String?
 
-    @State private var showingVisitEditor = false
-    @State private var justVisitedOn: Date?
-    @State private var askToReview = false
+    /// ワンタップで記録した直後の訪問（「編集」「取り消す」を出すため）
+    @State private var justAdded: Visit?
+    @State private var editingVisit: Visit?
+    @State private var calendarError: String?
+    @State private var confirmingUndo = false
     @State private var showingComposer = false
     @State private var reportTarget: Review?
+    @State private var deleteTarget: Review?
 
     init(shop: Shop) {
         self.shop = shop
@@ -34,6 +38,11 @@ struct ShopDetailView: View {
         _visits = Query(filter: #Predicate<Visit> { $0.shopId == shopID },
                         sort: \Visit.visitedAt, order: .reverse)
     }
+
+    private var todaysVisit: Visit? {
+        visits.first { Calendar.current.isDateInToday($0.visitedAt) }
+    }
+    private var visitedToday: Bool { todaysVisit != nil }
 
     private var visibleReviews: [Review] {
         let blocked = BlockList.decode(blockedRaw)
@@ -51,19 +60,23 @@ struct ShopDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadReviews() }
         .refreshable { await loadReviews() }
-        .sheet(isPresented: $showingVisitEditor, onDismiss: {
-            if justVisitedOn != nil { askToReview = true }
-        }) {
-            VisitEditor(shop: shop) { date in justVisitedOn = date }
+        .sensoryFeedback(.success, trigger: visits.count) { old, new in new > old }
+        .sheet(item: $editingVisit, onDismiss: { justAdded = nil }) { visit in
+            VisitEditor(visit: visit)
         }
-        .alert("レビューも書きますか？", isPresented: $askToReview) {
-            Button("書く") { showingComposer = true }
-            Button("あとで", role: .cancel) { justVisitedOn = nil }
-        }
-        .sheet(isPresented: $showingComposer, onDismiss: { justVisitedOn = nil }) {
-            ReviewComposer(shop: shop, visitedAt: justVisitedOn ?? visits.first?.visitedAt) {
+        .sheet(isPresented: $showingComposer) {
+            ReviewComposer(shop: shop, visitedAt: visits.first?.visitedAt ?? Date()) {
+                // レビューを書いた店は「行った」ことにする（まだ記録がなければ今日の日付で）
+                if visits.isEmpty { recordVisit() }
                 Task { await loadReviews() }
             }
+        }
+        .confirmationDialog("自分のレビューを削除しますか？", isPresented: Binding(
+            get: { deleteTarget != nil }, set: { if !$0 { deleteTarget = nil } }
+        ), titleVisibility: .visible, presenting: deleteTarget) { review in
+            Button("削除する", role: .destructive) { Task { await delete(review) } }
+        } message: { _ in
+            Text("写真も一緒に消え、元に戻せません。")
         }
         .confirmationDialog("このレビューを通報", isPresented: Binding(
             get: { reportTarget != nil }, set: { if !$0 { reportTarget = nil } }
@@ -99,6 +112,25 @@ struct ShopDetailView: View {
                     }
                 }
             }
+            // 押すたびに「記録」⇄「取り消し」が切り替わる
+            Button {
+                toggleTodaysVisit()
+            } label: {
+                VStack(spacing: 2) {
+                    Label(visitedToday ? "行った！" : "行った！を記録",
+                          systemImage: visitedToday ? "checkmark.seal.fill" : "circle")
+                        .font(.headline)
+                    if visitedToday {
+                        Text("もう一度押すと取り消し").font(.caption2)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(visitedToday ? .green : .orange)
+            .confirmationDialog("今日の「行った！」を取り消しますか？", isPresented: $confirmingUndo, titleVisibility: .visible) {
+                Button("取り消す（メモも消えます）", role: .destructive) { undoTodaysVisit() }
+            }
             Button {
                 planner.setDestination(shop)
                 router.tab = .map
@@ -108,9 +140,9 @@ struct ShopDetailView: View {
                       systemImage: "flag.fill")
             }
             .disabled(planner.destination?.id == shop.id)
-            if let url = mapApp.placeURL(name: shop.name, latitude: shop.latitude, longitude: shop.longitude) {
+            if let url = mapApp.externalApp.placeURL(name: shop.name, latitude: shop.latitude, longitude: shop.longitude) {
                 Button { openURL(url) } label: {
-                    Label("\(mapApp.rawValue)で開く", systemImage: "map")
+                    Label("\(mapApp.externalApp.rawValue)で開く", systemImage: "map")
                 }
             }
         }
@@ -128,25 +160,48 @@ struct ShopDetailView: View {
     }
 
     private var visitSection: some View {
-        Section("自分の訪問記録") {
+        Section {
+            if let added = justAdded {
+                HStack {
+                    Label("記録しました", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Spacer()
+                    Button("日付・メモを変える") { editingVisit = added }
+                        .buttonStyle(.borderless)
+                }
+                .font(.subheadline)
+            }
+            if let calendarError {
+                Text("カレンダーに登録できませんでした：\(calendarError)")
+                    .font(.caption).foregroundStyle(.red)
+            }
             if visits.isEmpty {
                 Text("まだ行っていません").foregroundStyle(.secondary)
             }
             ForEach(visits) { visit in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(visit.visitedAt.formatted(date: .long, time: .omitted))
-                    if !visit.memo.isEmpty {
-                        Text(visit.memo).font(.caption).foregroundStyle(.secondary)
+                Button { editingVisit = visit } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(visit.visitedAt.formatted(date: .long, time: .omitted))
+                                .foregroundStyle(.primary)
+                            if !visit.memo.isEmpty {
+                                Text(visit.memo).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                     }
                 }
             }
             .onDelete { offsets in
                 for i in offsets { context.delete(visits[i]) }
+                justAdded = nil
             }
-            Button {
-                showingVisitEditor = true
-            } label: {
-                Label(visits.isEmpty ? "行った！を記録" : "また行った！を記録", systemImage: "checkmark.circle")
+        } header: {
+            Text("自分の訪問記録")
+        } footer: {
+            if !visits.isEmpty {
+                Text("タップすると日付やメモを変更できます。")
             }
         }
     }
@@ -161,11 +216,14 @@ struct ShopDetailView: View {
                 Text("まだレビューがありません").foregroundStyle(.secondary)
             }
             ForEach(visibleReviews) { review in
-                ReviewRow(review: review)
-                    .contextMenu { reviewMenu(review) }
-                    .swipeActions { if review.userId == myUserID {
-                        Button("削除", role: .destructive) { Task { await delete(review) } }
-                    } }
+                ReviewRow(
+                    review: review,
+                    isMine: review.userId == myUserID,
+                    onDelete: { deleteTarget = review },
+                    onReport: { reportTarget = review },
+                    onHideUser: { hideUser(of: review) }
+                )
+                .contextMenu { reviewMenu(review) }
             }
             Button {
                 showingComposer = true
@@ -184,24 +242,58 @@ struct ShopDetailView: View {
     @ViewBuilder
     private func reviewMenu(_ review: Review) -> some View {
         if review.userId == myUserID {
-            Button("削除", systemImage: "trash", role: .destructive) { Task { await delete(review) } }
+            Button("削除", systemImage: "trash", role: .destructive) { deleteTarget = review }
         } else {
             Button("通報する", systemImage: "exclamationmark.bubble") { reportTarget = review }
-            Button("このユーザーを非表示", systemImage: "eye.slash") {
-                var ids = BlockList.decode(blockedRaw)
-                ids.insert(review.userId)
-                blockedRaw = BlockList.encode(ids)
-            }
+            Button("このユーザーを非表示", systemImage: "eye.slash") { hideUser(of: review) }
         }
     }
 
     // MARK: - Actions
 
+    private func hideUser(of review: Review) {
+        var ids = BlockList.decode(blockedRaw)
+        ids.insert(review.userId)
+        blockedRaw = BlockList.encode(ids)
+    }
+
+    /// 「行った！」ボタン：まだなら記録、記録済みなら取り消す
+    private func toggleTodaysVisit() {
+        guard let visit = todaysVisit else { recordVisit(); return }
+        // メモを書いた記録は、うっかり消さないよう確認してから
+        if visit.memo.isEmpty { undoTodaysVisit() } else { confirmingUndo = true }
+    }
+
+    private func undoTodaysVisit() {
+        guard let visit = todaysVisit else { return }
+        if justAdded == visit { justAdded = nil }
+        context.delete(visit)
+        try? context.save()
+    }
+
+    /// ワンタップで今日の訪問を記録する
+    private func recordVisit() {
+        let visit = Visit(shopId: shop.id, shopName: shop.name, visitedAt: Date())
+        context.insert(visit)
+        try? context.save()
+        justAdded = visit
+        calendarError = nil
+        if addToCalendar {
+            Task {
+                do {
+                    try await CalendarSync.addVisit(shop: shop, date: visit.visitedAt, memo: "")
+                } catch {
+                    calendarError = error.localizedDescription
+                }
+            }
+        }
+    }
+
     private func loadReviews() async {
         isLoadingReviews = true
         defer { isLoadingReviews = false }
         do {
-            reviews = try await services.reviews.reviews(for: shop.id)
+            reviews = try await services.reviews.reviews(for: shop.allIDs)
             myUserID = try? await services.reviews.currentUserID()
             reviewError = nil
         } catch {

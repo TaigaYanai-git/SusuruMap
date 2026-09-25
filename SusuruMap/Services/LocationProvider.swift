@@ -15,6 +15,7 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate {
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         manager.distanceFilter = 50 // 50m 動いたら更新（電池の節約）
+        manager.headingFilter = 5   // 向きは5度変わったら更新
         authorization = manager.authorizationStatus
     }
 
@@ -28,6 +29,20 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate {
             manager.requestWhenInUseAuthorization()
         }
         manager.startUpdatingLocation()
+        startHeading()
+    }
+
+    /// ナビ中は位置を細かく（5m ごと・高精度で）取る。終わったら電池を節約する設定に戻す
+    func setNavigating(_ on: Bool) {
+        manager.desiredAccuracy = on ? kCLLocationAccuracyBestForNavigation : kCLLocationAccuracyHundredMeters
+        manager.distanceFilter = on ? 5 : 50
+    }
+
+    /// 端末の向き（コンパス）の取得を始める。地図の青い点に「向いている方向」の扇形が出る
+    private func startHeading() {
+        if CLLocationManager.headingAvailable() {
+            manager.startUpdatingHeading()
+        }
     }
 
     /// 現在地から店までの距離（m）。現在地が分からなければ nil
@@ -39,7 +54,10 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate {
         let status = manager.authorizationStatus
         Task { @MainActor in
             self.authorization = status
-            if self.isAuthorized { self.manager.startUpdatingLocation() }
+            if self.isAuthorized {
+                self.manager.startUpdatingLocation()
+                self.startHeading()
+            }
         }
     }
 

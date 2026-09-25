@@ -19,6 +19,11 @@ struct Shop: Identifiable, Codable, Hashable {
     let longitude: Double
     /// この店が登場する動画（新しい順）
     let videos: [ShopVideo]
+    /// 別名で重複していたときの古い ID（「行った！」やレビューを引き継ぐため）
+    let aliases: [String]?
+
+    /// この店を表すすべての ID（本来の ID ＋ 古い ID）
+    var allIDs: [String] { [id] + (aliases ?? []) }
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
