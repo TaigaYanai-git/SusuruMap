@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """shops.json の形式チェック（CI と pre-commit 用）。問題があれば終了コード 1。"""
-from __future__ import annotations
-
 import json
 import re
 import sys
@@ -11,8 +9,8 @@ DEFAULT = Path(__file__).resolve().parent.parent / "SusuruMap" / "Resources" / "
 VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
 
-def validate(path: Path) -> list[str]:
-    errors: list[str] = []
+def validate(path):
+    errors = []
     try:
         catalog = json.loads(path.read_text(encoding="utf-8"))
     except Exception as e:  # noqa: BLE001
@@ -21,7 +19,7 @@ def validate(path: Path) -> list[str]:
     for key in ("version", "shops"):
         if key not in catalog:
             errors.append(f"トップレベルに '{key}' がありません")
-    seen: set[str] = set()
+    seen = set()
     for i, s in enumerate(catalog.get("shops", [])):
         where = f"shops[{i}] ({s.get('name', '?')})"
         for key, typ in (("id", str), ("name", str), ("latitude", (int, float)),
@@ -46,7 +44,7 @@ def validate(path: Path) -> list[str]:
     return errors
 
 
-def main() -> int:
+def main():
     path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT
     errors = validate(path)
     catalog_size = len(json.loads(path.read_text(encoding="utf-8")).get("shops", [])) if not errors else "?"

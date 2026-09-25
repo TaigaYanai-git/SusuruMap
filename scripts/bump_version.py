@@ -9,8 +9,6 @@
   git commit -am "chore: release v0.2.0"
   git tag v0.2.0 && git push origin main --tags   # → GitHub Release が自動作成される
 """
-from __future__ import annotations
-
 import re
 import sys
 from datetime import date
@@ -22,7 +20,7 @@ CHANGELOG = ROOT / "CHANGELOG.md"
 SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
 
 
-def main() -> int:
+def main():
     if len(sys.argv) != 2:
         print(__doc__)
         return 1

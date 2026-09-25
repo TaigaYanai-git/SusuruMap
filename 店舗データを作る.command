@@ -5,6 +5,20 @@ SERVICE="susurumap-youtube-api-key"
 echo "🍜 すするTVの店舗データを作ります"
 echo ""
 
+# Python を選ぶ（Mac に標準で入っている新しめの Python を優先。古いものは使わない）
+PY=""
+for c in /usr/bin/python3 /opt/homebrew/bin/python3 /usr/local/bin/python3 python3; do
+  if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 6) else 1)' >/dev/null 2>&1; then
+    PY="$c"; break
+  fi
+done
+if [ -z "$PY" ]; then
+  echo "❌ 使える Python（3.6 以上）が見つかりません。この画面の内容を Claude に貼ってください。"
+  read -r -p "Enter で閉じます"; exit 1
+fi
+echo "（使う Python: $("$PY" --version 2>&1)）"
+echo ""
+
 KEY=$(security find-generic-password -s "$SERVICE" -w 2>/dev/null)
 if [ -z "$KEY" ]; then
   echo "YouTube の APIキーを貼り付けて Enter を押してください。"
@@ -25,7 +39,7 @@ echo "  初回は 30分〜1時間ほどかかります。この画面は閉じ�
 echo "  （実行中は Mac がスリープしないようにしています）"
 echo ""
 
-if ! YOUTUBE_API_KEY="$KEY" caffeinate -i python3 tools/fetch_susuru_shops.py; then
+if ! YOUTUBE_API_KEY="$KEY" caffeinate -i "$PY" tools/fetch_susuru_shops.py; then
   echo ""
   echo "❌ 途中で止まりました。上に出ているメッセージを Claude に貼ってください。"
   echo ""
@@ -34,7 +48,7 @@ if ! YOUTUBE_API_KEY="$KEY" caffeinate -i python3 tools/fetch_susuru_shops.py; t
   read -r -p "Enter で閉じます"; exit 1
 fi
 
-python3 tools/validate_shops.py
+"$PY" tools/validate_shops.py
 echo ""
 echo "✅ 完了しました。"
 echo "  ・Xcode に戻って ▶︎ を押すと、地図に本物のお店が表示されます"

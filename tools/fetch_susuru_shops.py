@@ -18,8 +18,6 @@ data/overrides.json で手動修正できる（修正は PR で共有 → GitHub
 
 依存: Python 3.9+ 標準ライブラリのみ
 """
-from __future__ import annotations
-
 import argparse
 import csv
 import hashlib
@@ -69,17 +67,17 @@ NOT_SHOP_WORDS = ("カップ", "袋麺", "日清", "マルちゃん", "明星", 
                   "セブン", "ローソン", "ファミマ", "ファミリーマート", "宅麺", "冷凍", "コンビニ", "自作")
 
 
-def norm(s: str) -> str:
+def norm(s):
     return unicodedata.normalize("NFKC", s).strip()
 
 
-def load_json(path: Path, default):
+def load_json(path, default):
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
     return default
 
 
-def http_json(url: str):
+def http_json(url):
     req = urllib.request.Request(url, headers={"User-Agent": "SusuruMap-data-builder/0.2 (fan-made app; github.com)", "Accept-Language": "ja"})
     with urllib.request.urlopen(req, timeout=30) as res:
         return json.load(res)
@@ -87,7 +85,7 @@ def http_json(url: str):
 
 # ---------------------------------------------------------------- YouTube
 
-def fetch_videos(api_key: str, playlist: str) -> list[dict]:
+def fetch_videos(api_key, playlist):
     videos, token = [], None
     while True:
         params = {"part": "snippet", "playlistId": playlist, "maxResults": 50, "key": api_key}
@@ -113,7 +111,7 @@ def fetch_videos(api_key: str, playlist: str) -> list[dict]:
 
 # ---------------------------------------------------------------- 抽出
 
-def extract(video: dict) -> dict:
+def extract(video):
     """概要欄とタイトルから {name, address, nameSource} を推定する"""
     name = address = None
     for raw in video["description"].splitlines():
@@ -144,7 +142,7 @@ def extract(video: dict) -> dict:
     return {"name": name, "address": address, "nameSource": name_source}
 
 
-def shop_from_title(title: str) -> str | None:
+def shop_from_title(title):
     t = norm(title)
     for rx in (TITLE_SHOP, TITLE_SHOP_ALT):
         m = rx.match(t)
@@ -155,11 +153,11 @@ def shop_from_title(title: str) -> str | None:
     return None
 
 
-def looks_like_non_shop(name: str | None) -> bool:
+def looks_like_non_shop(name):
     return bool(name) and any(w in name for w in NOT_SHOP_WORDS)
 
 
-def prefecture_of(text: str | None) -> str | None:
+def prefecture_of(text):
     if not text:
         return None
     return next((p for p in PREFECTURES if p in text), None)
@@ -167,7 +165,7 @@ def prefecture_of(text: str | None) -> str | None:
 
 # ---------------------------------------------------------------- ジオコーディング
 
-def geocode(address: str, cache: dict, retry_failed: bool) -> dict | None:
+def geocode(address, cache, retry_failed):
     if address in cache and (cache[address] is not None or not retry_failed):
         return cache[address]
     try:
@@ -184,7 +182,7 @@ def geocode(address: str, cache: dict, retry_failed: bool) -> dict | None:
     return cache[address]
 
 
-def search_by_name(name: str, cache: dict, retry_failed: bool) -> dict | None:
+def search_by_name(name, cache, retry_failed):
     """住所がないとき、店名で OpenStreetMap を検索（飲食店・お店だけを採用）"""
     key = "name:" + name
     if key in cache and (cache[key] is not None or not retry_failed):
@@ -207,10 +205,10 @@ def search_by_name(name: str, cache: dict, retry_failed: bool) -> dict | None:
 
 # ---------------------------------------------------------------- メイン
 
-def build(videos: list[dict], overrides: dict, geo_cache: dict, retry_failed: bool):
-    shops: dict[str, dict] = {}
-    unresolved: list[dict] = []
-    stats: dict[str, int] = {}
+def build(videos, overrides, geo_cache, retry_failed):
+    shops = {}
+    unresolved = []
+    stats = {}
     ov_videos = overrides.get("videos", {})
 
     for i, v in enumerate(videos, 1):
@@ -223,7 +221,7 @@ def build(videos: list[dict], overrides: dict, geo_cache: dict, retry_failed: bo
         name = ov.get("name") or info["name"]
         address = ov.get("address") or info["address"]
 
-        def note(reason: str):
+        def note(reason):
             unresolved.append({
                 "videoId": v["videoId"], "title": v["title"], "publishedAt": v["publishedAt"],
                 "guessedName": name or "", "guessedAddress": address or "", "reason": reason,
@@ -268,7 +266,7 @@ def build(videos: list[dict], overrides: dict, geo_cache: dict, retry_failed: bo
     return ordered, unresolved
 
 
-def main() -> int:
+def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--from-cache", action="store_true", help="data/videos_cache.json を使い API を呼ばない")
     ap.add_argument("--playlist", default=DEFAULT_UPLOADS_PLAYLIST, help="アップロード動画のプレイリストID")
