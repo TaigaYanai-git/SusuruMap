@@ -11,7 +11,11 @@ SHOPS_DATA_URL =
 // 設定画面に表示するリポジトリの URL
 REPO_URL =
 
-// iCloud 同期を使う場合のコンテナ ID（例: iCloud.com.yourname.susurumap）
-ICLOUD_CONTAINER =
+// ── iCloud 同期（訪問記録）─────────────────────────────
+// 有料の Apple Developer Program のチームでビルドする前提で ON。
+// 無料アカウントでビルドする人は Local.xcconfig で CODE_SIGN_ENTITLEMENTS = を空にする
+// （その場合、訪問記録は端末内だけに保存される）。
+CODE_SIGN_ENTITLEMENTS = SusuruMap/Resources/SusuruMap.entitlements
+ICLOUD_CONTAINER = iCloud.$(BUNDLE_ID_PREFIX).susurumap
 
 #include? "Local.xcconfig"

@@ -49,15 +49,8 @@ targets:
         NSCalendarsWriteOnlyAccessUsageDescription: ラーメン店に行った日をカレンダーに登録するために使います。
         SHOPS_DATA_URL: $(SHOPS_DATA_URL)
         REPO_URL: $(REPO_URL)
-    # ── iCloud 同期（有料の Apple Developer Program が必要）──────
-    # 訪問記録を自分の端末間で同期したい場合はコメントを外し、
-    # Config/Local.xcconfig の ICLOUD_CONTAINER を設定してから `make project`。
-    # entitlements:
-    #   path: SusuruMap/SusuruMap.entitlements
-    #   properties:
-    #     com.apple.developer.icloud-services: [CloudKit]
-    #     com.apple.developer.icloud-container-identifiers: [$(ICLOUD_CONTAINER)]
-    #     aps-environment: development
+        # CloudKit の変更通知を受けてバックグラウンドで同期するため
+        UIBackgroundModes: [remote-notification]
     dependencies:
       - package: Firebase
         product: FirebaseAuth

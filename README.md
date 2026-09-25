@@ -12,7 +12,7 @@ YouTuber **SUSURU TV.** が訪れたラーメン店を地図で探せる iOS ア
 
 ## はじめかた（各自の Mac で）
 
-必要なもの：Xcode 16 以上、Homebrew、Apple ID（無料でも実機ビルド可）
+必要なもの：Xcode 16 以上、Homebrew。開発者は Developer Program のチーム（無料アカウントでも iCloud を外せばビルド可）。**使うだけの友達は TestFlight で入れるだけ**でOK
 
 ```bash
 git clone https://github.com/<owner>/SusuruMap.git
@@ -55,10 +55,42 @@ make data                    # 全動画を取得 → 店名・住所を抽出 �
 - GitHub の Secrets に `YOUTUBE_API_KEY` を登録すると、**毎週自動で新着動画を取り込んで PR** が来ます
 - `Config/Local.xcconfig` の `SHOPS_DATA_URL` に raw URL を入れると、アプリ更新なしで最新データが配信されます（公開リポジトリの場合）
 
-## iCloud 同期（任意・有料 Developer Program が必要）
+## iCloud 同期（訪問記録）
 
-`project.yml` の `entitlements:` のコメントを外し、`Local.xcconfig` に `ICLOUD_CONTAINER = iCloud.com.yourname.susurumap` を書いて `make project`。
-訪問記録が自分の iPhone / iPad 間で同期されます。
+Developer Program のチームでビルドする前提で **最初から ON** です（`Config/Base.xcconfig` の `CODE_SIGN_ENTITLEMENTS`）。
+コンテナ ID は `iCloud.<BUNDLE_ID_PREFIX>.susurumap` が自動で使われます。
+
+1. 初回ビルド前に Xcode の *Signing & Capabilities* で iCloud の欄を開き、コンテナにチェックが入っていることを確認
+   （自動署名なら Developer サイトへの登録も Xcode がやります）
+2. 実機を2台用意して同じ Apple ID でサインイン → 片方で「行った！」を記録すると、もう片方に数十秒で反映
+3. **TestFlight / App Store に出す前に** [CloudKit Console](https://icloud.developer.apple.com/) で
+   Schema を **Deploy to Production** する（これを忘れると TestFlight 版で同期されません）
+
+友達が無料アカウントで自分用にビルドする場合は、`Local.xcconfig` に `CODE_SIGN_ENTITLEMENTS =` を書けば iCloud なし（端末内保存）でビルドできます。
+
+## TestFlight で友達に配る
+
+`v*` タグを push すると GitHub Actions がビルドして TestFlight に上げます（`.github/workflows/testflight.yml`）。
+
+**最初に1回だけ**
+1. [App Store Connect](https://appstoreconnect.apple.com/) で新規アプリを作成（Bundle ID は `<BUNDLE_ID_PREFIX>.susurumap`）
+2. *ユーザとアクセス > 統合 > App Store Connect API* でキーを発行（ロール **Admin**。CI で証明書を自動作成するため）
+3. GitHub の *Settings > Secrets and variables > Actions* に登録
+   | 種類 | 名前 | 値 |
+   |---|---|---|
+   | Secret | `APPLE_TEAM_ID` | Team ID |
+   | Secret | `ASC_KEY_ID` / `ASC_ISSUER_ID` | API キーの ID / Issuer ID |
+   | Secret | `ASC_KEY_P8_BASE64` | `base64 -i AuthKey_XXXX.p8 \| pbcopy` の結果 |
+   | Secret | `GOOGLE_SERVICE_INFO_PLIST_BASE64` | `base64 -i GoogleService-Info.plist \| pbcopy` の結果 |
+   | Variable | `BUNDLE_ID_PREFIX` | 例 `com.toraapple` |
+4. 友達の招待：TestFlight の「外部テスト」でグループを作り **公開リンク** を発行（初回ビルドだけ Apple の簡易審査あり）
+
+**リリースのたびに**
+```bash
+python3 scripts/bump_version.py 0.2.0
+git commit -am "chore: release v0.2.0" && git tag v0.2.0 && git push origin main --tags
+```
+→ GitHub Release（変更点）と TestFlight ビルドが同時にできます。友達の TestFlight アプリに更新通知が届きます。
 
 ## GitHub でやっていること
 
@@ -70,6 +102,7 @@ make data                    # 全動画を取得 → 店名・住所を抽出 �
 | Actions: iOS Build | PR ごとにビルドが通るか確認 |
 | Actions: Shop Data Check | `shops.json` の形式を検証 |
 | Actions: Update Shop Data | 週1で新着動画を取り込み PR 作成 |
+| Actions: TestFlight | タグを push するとビルドして TestFlight に配信 |
 | Issue テンプレート | 不具合・機能提案・店舗データ修正 |
 
 ## ディレクトリ
@@ -84,6 +117,7 @@ SusuruMap/
 │  ├─ Services/              店舗データ, レビュー(Firebase/ローカル), カレンダー
 │  ├─ Views/                 マップ, 店舗詳細, 訪問記録, レビュー投稿, 設定
 │  └─ Resources/             shops.json, Assets
+├─ ci/                      TestFlight 用の ExportOptions.plist
 ├─ firebase/                 Firestore / Storage セキュリティルール
 ├─ tools/                    店舗データ生成・検証スクリプト
 ├─ data/                     手動修正・ジオコードキャッシュ・要確認リスト

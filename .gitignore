@@ -23,3 +23,4 @@ data/videos_cache.json
 __pycache__/
 *.pyc
 .firebase/
+.asc/

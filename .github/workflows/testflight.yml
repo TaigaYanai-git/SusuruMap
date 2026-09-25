@@ -1,0 +1,87 @@
+name: TestFlight
+
+# `v*` タグを push すると、アーカイブして TestFlight にアップロードする。
+# 友達は TestFlight アプリから最新版を入れられる。
+#
+# 必要な設定（Settings > Secrets and variables > Actions）:
+#   Secrets
+#     APPLE_TEAM_ID                     Developer Program の Team ID
+#     ASC_KEY_ID / ASC_ISSUER_ID        App Store Connect API キー（ロール: Admin）
+#     ASC_KEY_P8_BASE64                 AuthKey_XXXX.p8 を base64 にしたもの
+#     GOOGLE_SERVICE_INFO_PLIST_BASE64  GoogleService-Info.plist を base64 にしたもの（任意）
+#   Variables
+#     BUNDLE_ID_PREFIX                  例: com.toraapple（App Store Connect に登録したアプリと一致）
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  testflight:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_PATH: ${{ github.workspace }}/.asc/AuthKey.p8
+      # 毎回増えるビルド番号（手元のビルドと被らないよう 1000 から）
+      BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Write signing config and secrets
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          BUNDLE_PREFIX: ${{ vars.BUNDLE_ID_PREFIX }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          GSI_BASE64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+        run: |
+          cat > Config/Local.xcconfig <<XC
+          DEVELOPMENT_TEAM = ${TEAM_ID}
+          BUNDLE_ID_PREFIX = ${BUNDLE_PREFIX}
+          SHOPS_DATA_URL = https:/\$()/raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/SusuruMap/Resources/shops.json
+          REPO_URL = https:/\$()/github.com/${GITHUB_REPOSITORY}
+          XC
+          mkdir -p .asc
+          echo "$ASC_KEY_P8_BASE64" | base64 --decode > "$ASC_KEY_PATH"
+          if [ -n "$GSI_BASE64" ]; then
+            echo "$GSI_BASE64" | base64 --decode > SusuruMap/Resources/GoogleService-Info.plist
+          else
+            echo "::warning::GoogleService-Info.plist がないため、レビューは端末内保存モードでビルドされます"
+          fi
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Archive
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project SusuruMap.xcodeproj -scheme SusuruMap -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/SusuruMap.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            -skipPackagePluginValidation -skipMacroValidation \
+            CURRENT_PROJECT_VERSION=$((1000 + BUILD_NUMBER)) | tail -n 80
+
+      - name: Upload to TestFlight
+        run: |
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath build/SusuruMap.xcarchive \
+            -exportOptionsPlist ci/ExportOptions.plist \
+            -exportPath build/export \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" | tail -n 40
+
+      - name: Clean up key
+        if: always()
+        run: rm -rf .asc

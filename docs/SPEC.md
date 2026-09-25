@@ -21,7 +21,7 @@ YouTuber「SUSURU TV.」が動画で訪れたラーメン店を地図で探し�
 | F-02 | 動画リンク | 店をタップ → 詳細シート → 動画をタップで YouTube を開く（アプリがあればアプリで）。動画IDが不明な店は「SUSURU TV. 店名」の検索結果を開く |
 | F-03 | 絞り込み・検索 | すべて / 未訪問 / 行った の切替。店名・住所・都道府県で検索し、確定で最初の結果へ移動 |
 | F-04 | 訪問チェック | 「行った！」で訪問日（今日以前）とメモを記録。複数回記録可、スワイプで削除 |
-| F-05 | 訪問の同期 | SwiftData + CloudKit で自分の端末間を同期（iCloud 設定済みビルドのみ）。任意で iPhone のカレンダーに終日予定「🍜 店名」を追加 |
+| F-05 | 訪問の同期 | SwiftData + CloudKit（プライベート DB）で同じ Apple ID の端末間を自動同期。任意で iPhone のカレンダーに終日予定「🍜 店名」を追加 |
 | F-06 | 制覇率 | 行った店の数 / 全店舗数、通算訪問回数、訪問履歴 |
 | F-07 | レビュー投稿 | ★1〜5、コメント（1000字以内）、写真1枚、ニックネーム（30字以内）。訪問記録があれば訪問日を添付 |
 | F-08 | レビュー共有 | 店ごとに新しい順で最大100件表示。平均評価を表示。自分の投稿は削除可（編集は不可） |
@@ -71,6 +71,10 @@ TabView
 
 SwiftData `Visit`：`shopId`, `shopName`, `visitedAt`, `memo`, `createdAt`
 
+- iCloud コンテナ `iCloud.<BUNDLE_ID_PREFIX>.susurumap` のプライベート DB に同期（他人には見えない）
+- CloudKit 制約のため全項目にデフォルト値あり・unique 制約なし。項目を追加するときもデフォルト値を付ける
+- スキーマ変更を含むリリースでは、TestFlight 配信前に CloudKit Console で Production へデプロイする
+
 ### 4.3 レビュー（Firebase）
 
 | 場所 | フィールド |
@@ -90,9 +94,15 @@ SwiftData `Visit`：`shopId`, `shopName`, `visitedAt`, `memo`, `createdAt`
 | `DEVELOPMENT_TEAM` / `BUNDLE_ID_PREFIX` | 各自の署名設定（`Local.xcconfig`、Git 管理外） |
 | `SHOPS_DATA_URL` | GitHub の raw `shops.json` URL。空なら同梱データのみ |
 | `REPO_URL` | 設定画面に出すリポジトリ URL |
-| `ICLOUD_CONTAINER` | iCloud 同期用コンテナ ID |
+| `ICLOUD_CONTAINER` | iCloud コンテナ ID（既定 `iCloud.$(BUNDLE_ID_PREFIX).susurumap`） |
+| `CODE_SIGN_ENTITLEMENTS` | 既定で iCloud 有効。無料アカウントでは空にする |
 
-## 6. 既知の制約 / 今後の候補
+## 6. 配布
+
+- `v*` タグ → GitHub Actions でアーカイブ → TestFlight（ビルド番号は 1000 + 実行番号）
+- 友達は TestFlight の外部テスト（公開リンク）で参加
+
+## 7. 既知の制約 / 今後の候補
 
 - 店舗数が数千になるとピンが多すぎる → クラスタリング（MKMapView ラップ）を検討
 - 匿名ログインのため、アプリを消すと自分のレビューを削除できなくなる → Sign in with Apple

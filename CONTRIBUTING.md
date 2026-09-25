@@ -27,8 +27,10 @@ git push -u origin feat/shop-clustering   # → GitHub で PR を作成
 ```bash
 python3 scripts/bump_version.py 0.2.0          # project.yml と CHANGELOG を更新
 git commit -am "chore: release v0.2.0"
-git tag v0.2.0 && git push origin main --tags   # → GitHub Release が自動作成
+git tag v0.2.0 && git push origin main --tags   # → GitHub Release と TestFlight ビルドが自動作成
 ```
+
+`Visit` などの SwiftData モデルに項目を足したリリースでは、タグを打つ前に CloudKit Console でスキーマを Production にデプロイする。
 
 友達に「今どのバージョン使ってる？」と聞けば、Release ページの変更点と照らし合わせられる。
 

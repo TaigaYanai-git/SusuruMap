@@ -1,12 +1,16 @@
 // このファイルを Config/Local.xcconfig にコピーして自分の値を入れる（Git には上がらない）
 //   cp Config/Local.xcconfig.example Config/Local.xcconfig
 
-// Xcode > Settings > Accounts で確認できる Team ID
+// Xcode > Settings > Accounts で確認できる Team ID（Developer Program のチーム）
 DEVELOPMENT_TEAM = XXXXXXXXXX
 
-// 無料アカウントでは Bundle ID が他人と被るとビルドできないので、各自ユニークにする
+// Bundle ID の接頭辞。TestFlight 配布用はオーナーの値に揃える。
+// 友達が自分のアカウントで実機ビルドする場合は各自ユニークな値にする。
 BUNDLE_ID_PREFIX = com.yourname
 
 // リポジトリを作ったら書き換える（例は tora-apple/SusuruMap の場合）
 SHOPS_DATA_URL = https:/$()/raw.githubusercontent.com/tora-apple/SusuruMap/main/SusuruMap/Resources/shops.json
 REPO_URL = https:/$()/github.com/tora-apple/SusuruMap
+
+// 無料アカウントでビルドする場合だけコメントを外す（iCloud 同期なしになる）
+// CODE_SIGN_ENTITLEMENTS =

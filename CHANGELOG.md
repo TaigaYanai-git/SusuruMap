@@ -7,6 +7,12 @@ PR を出すときは `[Unreleased]` に1行追記してください。リリー
 
 ## [Unreleased]
 
+### Changed
+- iCloud 同期（訪問記録）を既定で有効化（無料アカウントは `CODE_SIGN_ENTITLEMENTS =` で無効化）
+
+### Added
+- タグ push で TestFlight に自動配信する GitHub Actions ワークフロー
+
 ## [0.1.0] - 2026-09-25
 
 ### Added
