@@ -1,0 +1,29 @@
+name: 🐛 不具合報告
+description: アプリの動きがおかしい
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 何が起きた？
+      description: 期待した動きと実際の動き
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      placeholder: "1. マップで〇〇をタップ\n2. …"
+  - type: input
+    id: version
+    attributes:
+      label: アプリのバージョン
+      description: 設定 > このアプリについて に表示されています
+      placeholder: "0.1.0 (1)"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: 端末 / iOS
+      placeholder: "iPhone 15 / iOS 26.0"

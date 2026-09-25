@@ -1,0 +1,40 @@
+{
+  "version": "sample",
+  "generatedAt": "2000-01-01T00:00:00Z",
+  "note": "動作確認用の架空データです。`make data`（tools/fetch_susuru_shops.py）で実データに置き換えてください。",
+  "shops": [
+    {
+      "id": "sample-tokyo",
+      "name": "（サンプル）東京駅前の中華そば",
+      "address": "東京都千代田区丸の内1丁目",
+      "prefecture": "東京都",
+      "latitude": 35.6812,
+      "longitude": 139.7671,
+      "videos": [
+        { "videoId": null, "title": "サンプル動画（タップでYouTube検索）", "publishedAt": null }
+      ]
+    },
+    {
+      "id": "sample-shinjuku",
+      "name": "（サンプル）新宿の煮干しラーメン",
+      "address": "東京都新宿区新宿3丁目",
+      "prefecture": "東京都",
+      "latitude": 35.6909,
+      "longitude": 139.7044,
+      "videos": [
+        { "videoId": null, "title": "サンプル動画（タップでYouTube検索）", "publishedAt": null }
+      ]
+    },
+    {
+      "id": "sample-tsukuba",
+      "name": "（サンプル）つくばの家系ラーメン",
+      "address": "茨城県つくば市吾妻1丁目",
+      "prefecture": "茨城県",
+      "latitude": 36.0827,
+      "longitude": 140.1115,
+      "videos": [
+        { "videoId": null, "title": "サンプル動画（タップでYouTube検索）", "publishedAt": null }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+name: 🍜 店舗データの修正
+description: 店名・場所の間違い、載っていない店、閉店など
+labels: [data]
+body:
+  - type: input
+    id: video
+    attributes:
+      label: 動画の URL
+      placeholder: https://www.youtube.com/watch?v=...
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: 種類
+      options: [店名が違う, 場所がずれている, マップに載っていない, ラーメン以外の動画なので除外, 閉店・移転]
+    validations:
+      required: true
+  - type: textarea
+    id: correct
+    attributes:
+      label: 正しい情報
+      placeholder: "店名：\n住所："

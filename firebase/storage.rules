@@ -1,0 +1,14 @@
+rules_version = '2';
+
+// レビュー写真: reviews/{uid}/{reviewId}.jpg
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /reviews/{uid}/{fileName} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

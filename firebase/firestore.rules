@@ -1,0 +1,35 @@
+rules_version = '2';
+
+// すするマップ Firestore セキュリティルール
+//   shops/{shopId}/reviews/{reviewId} : 誰でも読める / ログインユーザーが自分名義で作成・削除
+//   reports/{reportId}                : 作成のみ（閲覧は Firebase コンソールから）
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function validReview(d) {
+      return d.keys().hasOnly(['userId', 'displayName', 'rating', 'comment', 'createdAt',
+                               'visitedAt', 'photoURL', 'photoPath'])
+        && d.userId == request.auth.uid
+        && d.rating is int && d.rating >= 1 && d.rating <= 5
+        && d.comment is string && d.comment.size() <= 1000
+        && d.displayName is string && d.displayName.size() >= 1 && d.displayName.size() <= 30
+        && d.createdAt == request.time
+        && (!('photoPath' in d) || d.photoPath.matches('reviews/' + request.auth.uid + '/.*'));
+    }
+
+    match /shops/{shopId}/reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null && validReview(request.resource.data);
+      allow update: if false;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    match /reports/{reportId} {
+      allow create: if request.auth != null
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() <= 100;
+      allow read, update, delete: if false;
+    }
+  }
+}

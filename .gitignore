@@ -1,0 +1,25 @@
+# Xcode（プロジェクトは project.yml から XcodeGen で生成するので Git に入れない）
+*.xcodeproj
+*.xcworkspace
+SusuruMap/Info.plist
+xcuserdata/
+DerivedData/
+build/
+.build/
+*.ipa
+*.dSYM.zip
+
+# 個人設定・秘密情報
+Config/Local.xcconfig
+GoogleService-Info.plist
+.firebaserc
+.env
+
+# データ生成の中間ファイル
+data/videos_cache.json
+
+# その他
+.DS_Store
+__pycache__/
+*.pyc
+.firebase/

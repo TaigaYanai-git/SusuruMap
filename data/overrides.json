@@ -1,0 +1,8 @@
+{
+  "_comment": "自動抽出の誤りを動画IDごとに手動修正する。name/address/lat/lng/shopId を上書き、skip:true で除外（ラーメン以外の動画など）。修正したら PR を出す。",
+  "videos": {
+    "EXAMPLE_ID1": { "skip": true },
+    "EXAMPLE_ID2": { "name": "正しい店名", "address": "東京都〇〇区〇〇1-2-3" },
+    "EXAMPLE_ID3": { "name": "移転前の店", "lat": 35.0, "lng": 139.0, "shopId": "s_manual_001" }
+  }
+}

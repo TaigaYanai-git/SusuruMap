@@ -1,0 +1,41 @@
+name: Update Shop Data
+
+# 毎週月曜 3:00 (JST) に SUSURU TV. の新着動画を取り込み、差分があれば PR を作る。
+# 必要な設定:
+#   - Settings > Secrets and variables > Actions に YOUTUBE_API_KEY
+#   - Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests" を ON
+on:
+  schedule:
+    - cron: "0 18 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch videos & rebuild shops.json
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: python3 tools/fetch_susuru_shops.py
+      - name: Validate
+        run: python3 tools/validate_shops.py
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: bot/update-shops
+          commit-message: "data: SUSURU TV. の新着動画から店舗データを更新"
+          title: "data: 店舗データの自動更新"
+          body: |
+            GitHub Actions による週次の自動更新です。
+            - `data/unresolved.csv` の「要確認」を見て、必要なら `data/overrides.json` を修正してください。
+            - マージすると、`SHOPS_DATA_URL` を設定したアプリには次回起動時に反映されます。
+          labels: data
+          delete-branch: true

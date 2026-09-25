@@ -1,0 +1,18 @@
+name: 💡 機能の提案
+description: こんな機能がほしい
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: ほしい機能
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: なぜ必要？（どんな場面で使う？）
+  - type: textarea
+    id: spec
+    attributes:
+      label: 仕様案（docs/SPEC.md のどこが変わる？）
