@@ -1,8 +1,98 @@
 {
- "version": "2026.10.04",
- "generatedAt": "2026-10-04T21:01:32Z",
+ "version": "2026.10.11",
+ "generatedAt": "2026-10-11T21:38:55Z",
  "note": "tools/fetch_susuru_shops.py により自動生成。修正は data/overrides.json へ。",
  "shops": [
+  {
+   "id": "s_184c52780e",
+   "name": "元祖ニュータンタンメン本舗 西船橋店",
+   "address": "千葉県船橋市西船4-2-8",
+   "prefecture": "千葉県",
+   "latitude": 35.708324,
+   "longitude": 139.961075,
+   "videos": [
+    {
+     "videoId": "IFXvfQxxccw",
+     "title": "【二郎系】あのチェーン店の二郎系に挑戦。本当のこと言っちゃいます。をすする 元祖ニュータンタンメン本舗 西船橋店【飯テロ】SUSURU TV.第3963回",
+     "publishedAt": "2026-10-10T09:30:01Z"
+    }
+   ]
+  },
+  {
+   "id": "s_9932fd8c98",
+   "name": "煮干閏",
+   "address": "愛知県名古屋市名東区上社5-308",
+   "prefecture": "愛知県",
+   "latitude": 35.170322,
+   "longitude": 137.013809,
+   "videos": [
+    {
+     "videoId": "_GeDr60yF5w",
+     "title": "【二杯食い】煮干しの「純度」と「破壊力」。名店出身の店主さんによる本格派煮干しラーメン。をすする 煮干閏【飯テロ】SUSURU TV.第3962回",
+     "publishedAt": "2026-10-09T09:30:02Z"
+    }
+   ]
+  },
+  {
+   "id": "s_1b8dcaac71",
+   "name": "キッチン きらく",
+   "address": "東京都千代田区神田神保町1-5",
+   "prefecture": "東京都",
+   "latitude": 35.695469,
+   "longitude": 139.759216,
+   "videos": [
+    {
+     "videoId": "WXO_CZrTIZ0",
+     "title": "【神保町】このビジュアルがたまんねえ。名店の店主が手掛ける無限メニューのラーメン食堂がヤバい。をすする キッチン きらく【飯テロ】SUSURU TV.第3961回",
+     "publishedAt": "2026-10-08T09:30:34Z"
+    }
+   ]
+  },
+  {
+   "id": "s_eda3fdfaf1",
+   "name": "三谷製麺所",
+   "address": "大阪府大阪市東成区中道1-9-16",
+   "prefecture": "大阪府",
+   "latitude": 34.677849,
+   "longitude": 135.535934,
+   "videos": [
+    {
+     "videoId": "2JFCZhX4ptk",
+     "title": "【賢者の宿題】麺だけ、だが激ウマ。そして神コスパ。食ってなかったのを悔やむレベル。をすする 三谷製麺所 【飯テロ】SUSURU TV.第3960回",
+     "publishedAt": "2026-10-07T09:30:37Z"
+    }
+   ]
+  },
+  {
+   "id": "s_0ed4b55219",
+   "name": "好来道場",
+   "address": "愛知県名古屋市千種区春岡通6-1-16",
+   "prefecture": "愛知県",
+   "latitude": 35.160313,
+   "longitude": 136.93956,
+   "videos": [
+    {
+     "videoId": "QJ5PNCMjDMQ",
+     "title": "【総本山】全てはここから始まった。数多の名店を生み出した歴史的名店へついに訪問。をすする 好来道場【飯テロ】SUSURU TV.第3959回",
+     "publishedAt": "2026-10-06T09:30:16Z"
+    }
+   ]
+  },
+  {
+   "id": "s_be07e4ac01",
+   "name": "刺激的な辛餡ラーメン",
+   "address": "愛知県名古屋市中区丸の内3-10-20",
+   "prefecture": "愛知県",
+   "latitude": 35.175461,
+   "longitude": 136.90329,
+   "videos": [
+    {
+     "videoId": "qji-oxGGuUk",
+     "title": "【刺激】とんでもねえぞこれ‥辛くて痺れる刺激的な一杯を全力で満喫。をすする 刺激的な辛餡ラーメン【飯テロ】SUSURU TV.第3958回",
+     "publishedAt": "2026-10-05T09:30:13Z"
+    }
+   ]
+  },
   {
    "id": "s_30b28b996c",
    "name": "籠屋食堂",
