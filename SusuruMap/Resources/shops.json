@@ -1,8 +1,58 @@
 {
- "version": "2026.10.11",
- "generatedAt": "2026-10-11T21:38:55Z",
+ "version": "2026.10.18",
+ "generatedAt": "2026-10-18T20:17:36Z",
  "note": "tools/fetch_susuru_shops.py により自動生成。修正は data/overrides.json へ。",
  "shops": [
+  {
+   "id": "s_e55c9b626d",
+   "name": "一条流がんこラーメン 金町",
+   "address": "東京都葛飾区東金町1-39-1",
+   "prefecture": "東京都",
+   "latitude": 35.770794,
+   "longitude": 139.87204,
+   "videos": [
+    {
+     "videoId": "oaUkhmWa2Mk",
+     "title": "【超うまい】しょっぱくてうますぎるラーメンを現役医師と一緒にすする 一条流がんこラーメン 金町【飯テロ】SUSURU TV.第3971回",
+     "publishedAt": "2026-10-18T09:30:31Z"
+    },
+    {
+     "videoId": "YQndlwh_tI0",
+     "title": "【ちょめめ】超越した旨みの境地。電撃オープンしたレジェンドラーメンの支店で今絶対食べておきたいラーメン。をすする 一条流がんこラーメン 金町【飯テロ】SUSURU TV.第3583回",
+     "publishedAt": "2025-09-25T09:30:20Z"
+    }
+   ]
+  },
+  {
+   "id": "s_3a99878ceb",
+   "name": "ラーメン ガレオン",
+   "address": "東京都墨田区東向島3-35-6",
+   "prefecture": "東京都",
+   "latitude": 35.721004,
+   "longitude": 139.815918,
+   "videos": [
+    {
+     "videoId": "cspqFa5Clmw",
+     "title": "【二郎系】「今日は本音で感想を言ってください」。豚増し二郎系をガチレビュー。をすする ラーメン ガレオン【飯テロ】SUSURU TV.第3969回",
+     "publishedAt": "2026-10-16T09:30:10Z"
+    }
+   ]
+  },
+  {
+   "id": "s_2164ee5909",
+   "name": "RAMEN JUNKEYZ",
+   "address": "大阪府東大阪市七軒家12-27",
+   "prefecture": "大阪府",
+   "latitude": 34.688206,
+   "longitude": 135.589294,
+   "videos": [
+    {
+     "videoId": "HOoUq15z-k8",
+     "title": "【賢者の宿題】ド濃厚な鶏白湯 VS SUSURU。激ウマ自家製麺と濃厚スープのラーメン&つけ麺をすすりまくる。をすする RAMEN JUNKEYZ【飯テロ】SUSURU TV.第3968回",
+     "publishedAt": "2026-10-15T09:30:13Z"
+    }
+   ]
+  },
   {
    "id": "s_184c52780e",
    "name": "元祖ニュータンタンメン本舗 西船橋店",
@@ -4311,21 +4361,6 @@
      "videoId": "T6m5iwx7KHE",
      "title": "【二郎系？】激ウマこんなラーメン見たことねえ！見た目からは味の想像がつかないハンパないボリュームをトッピングマシで爆食。をすする  ラーメン 達磨食堂【飯テロ】SUSURU TV.第3584回",
      "publishedAt": "2025-09-26T09:30:31Z"
-    }
-   ]
-  },
-  {
-   "id": "s_e55c9b626d",
-   "name": "一条流がんこラーメン 金町",
-   "address": "東京都葛飾区東金町1-39-1",
-   "prefecture": "東京都",
-   "latitude": 35.770794,
-   "longitude": 139.87204,
-   "videos": [
-    {
-     "videoId": "YQndlwh_tI0",
-     "title": "【ちょめめ】超越した旨みの境地。電撃オープンしたレジェンドラーメンの支店で今絶対食べておきたいラーメン。をすする 一条流がんこラーメン 金町【飯テロ】SUSURU TV.第3583回",
-     "publishedAt": "2025-09-25T09:30:20Z"
     }
    ]
   },
