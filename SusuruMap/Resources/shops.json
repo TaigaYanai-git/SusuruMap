@@ -1,8 +1,68 @@
 {
- "version": "2026.10.18",
- "generatedAt": "2026-10-18T20:17:36Z",
+ "version": "2026.10.25",
+ "generatedAt": "2026-10-25T20:33:26Z",
  "note": "tools/fetch_susuru_shops.py により自動生成。修正は data/overrides.json へ。",
  "shops": [
+  {
+   "id": "s_77ab07f6dc",
+   "name": "関内家",
+   "address": "神奈川県横浜市中区長者町5-71-2",
+   "prefecture": "神奈川県",
+   "latitude": 35.441814,
+   "longitude": 139.631256,
+   "videos": [
+    {
+     "videoId": "nxVXLsSbL9A",
+     "title": "【家系】二郎の目の前で行列を作る家系ラーメンを調査してきた。すする 関内家【飯テロ】SUSURU TV.第3976回",
+     "publishedAt": "2026-10-23T09:30:33Z"
+    }
+   ]
+  },
+  {
+   "id": "s_918da5d5c7",
+   "name": "Tsukemen Back to Back",
+   "address": "東京都品川区小山3-22-21",
+   "prefecture": "東京都",
+   "latitude": 35.619144,
+   "longitude": 139.705276,
+   "videos": [
+    {
+     "videoId": "ME9oeXWnV7k",
+     "title": "【つけ麺】値段は高い。でも満足度はもっと高い。東京の最先端、あまりにも豪華なつけ麺がヤバい。すする Tsukemen Back to Back【飯テロ】SUSURU TV.第3975回",
+     "publishedAt": "2026-10-22T09:30:31Z"
+    }
+   ]
+  },
+  {
+   "id": "s_aeccb65396",
+   "name": "ラーメン鷹の目 江古田店",
+   "address": "東京都練馬区栄町4-1",
+   "prefecture": "東京都",
+   "latitude": 35.737034,
+   "longitude": 139.672073,
+   "videos": [
+    {
+     "videoId": "qZQXJ72Hwss",
+     "title": "【二郎系】えっ！？ここにもお店が！？実力派インスパイア系の新店舗でラーメンを堪能。をすする ラーメン鷹の目 江古田店【飯テロ】SUSURU TV.第3974回",
+     "publishedAt": "2026-10-21T09:30:29Z"
+    }
+   ]
+  },
+  {
+   "id": "s_4eb034b307",
+   "name": "べきラーメン店を一挙ご紹介。をすする",
+   "address": "東京都杉並区高円寺南1-12-2",
+   "prefecture": "東京都",
+   "latitude": 35.698463,
+   "longitude": 139.655228,
+   "videos": [
+    {
+     "videoId": "3r_r8W5BMhs",
+     "title": "【厳選】激ウマ店舗しか出てきません。今すするべきラーメン店を一挙ご紹介。をすする【飯テロ】 SUSURU TV.第3972回",
+     "publishedAt": "2026-10-19T09:30:01Z"
+    }
+   ]
+  },
   {
    "id": "s_e55c9b626d",
    "name": "一条流がんこラーメン 金町",
